@@ -30,6 +30,7 @@ class Workbench:
         self.product_status = 0  # 产品格状态
         self.material_pro = 0  # 原料格预定状态, 防止有多个机器人将其作为出售目标
         self.product_pro = 0  # 防止有多个机器人将其作为购买目标
+        self.target_workbench_list = []  # 收购此工作台的产品且可到达的工作台列表
 
     def check_materials_full(self) -> bool:
         '''

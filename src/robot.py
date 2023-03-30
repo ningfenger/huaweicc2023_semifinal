@@ -26,7 +26,7 @@ class Robot:
         self.status: int = 0  # 0 空闲, 1 购买途中, 2 等待购买, 3 出售途中, 4 等待出售
         self.target = -1  # 当前机器人的目标控制台 -1代表无目标
         self.__plan = (-1, -1)  # 设定买和卖的目标工作台
-        self.workbench_List = []  # 可到达的工作台列表
+        self.target_workbench_list = []  # 可到达的工作台列表
 
     def set_plan(self, buy_ID: int, sell_ID: int):
         '''
