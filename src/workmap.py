@@ -17,8 +17,8 @@ class Workmap:
     GROUND = 0
     BOLCK = 100
     PATH = 30  # 算法规划的路径，绘图用
-    ROAD = 50  # 窄路
-    BROAD_ROAD = 70  # 宽路
+    ROAD = 50  # 窄路, 临近的四个空地的左下角，因此如果经过这类点请从右上角走
+    BROAD_ROAD = 70  # 宽路 瞄着中间走就行
 
     def __init__(self, debug=False) -> None:
         self.roads: List[set] = []  # 狭路集合
@@ -87,13 +87,16 @@ class Workmap:
         visited_robot = []  # 如果在遍历过程中找到了其他机器人，说明他两个的地点是可以相互到达的，进而可访问的工作台也是相同的
         visited_workbench = []  # 记录可达的工作台ID
         visited_loc = [[False]*100 for _ in range(100)]  # 记录访问过的节点
+        # turns = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+        turns =  list(itertools.product([-1, 0, 1], repeat=2))
+        turns.remove((0,0))
         for robot_loc, robot_ID in self.robots_loc.items():
             if res[robot_ID]:  # 已经有内容了，不必再更新
                 continue
             dq = [robot_loc]
             while dq:
                 i, j = dq.pop()
-                for x, y in [(-1, 0), (1, 0), (0, 1), (0, -1)]:
+                for x, y in turns:
                     n_x, n_y = i+x, j+y
                     if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][n_y] not in [self.BROAD_ROAD, self.ROAD]:
                         continue
@@ -118,6 +121,9 @@ class Workmap:
         res = [[] for _ in self.workbenchs_loc]
         visited_workbench = []  # 记录可达的工作台ID及类型, 在这同一个列表中的工作台说明可以相互访问
         visited_loc = [[False]*100 for _ in range(100)]  # 记录访问过的节点
+        # turns = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+        turns =  list(itertools.product([-1, 0, 1], repeat=2))
+        turns.remove((0,0))
         for workbench_loc, workbench_ID in self.workbenchs_loc.items():
             if res[workbench_ID]:  # 已经有内容了，不必再更新
                 continue
@@ -126,7 +132,7 @@ class Workmap:
             dq = [workbench_loc]
             while dq:
                 i, j = dq.pop()
-                for x, y in [(-1, 0), (1, 0), (0, 1), (0, -1)]:
+                for x, y in turns:
                     n_x, n_y = i+x, j+y
                     # 因为是卖的过程，必须是宽路
                     if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][n_y] != self.BROAD_ROAD:
