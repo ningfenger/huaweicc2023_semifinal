@@ -3,7 +3,8 @@ from typing import Optional, List, Tuple, Set
 import copy
 import itertools
 from workbench import Workbench
-
+from tools import *
+import numpy as np
 '''
 地图类，保存整张地图数据
 概念解释：
@@ -15,7 +16,7 @@ from workbench import Workbench
 
 class Workmap:
     GROUND = 0
-    BOLCK = 100
+    BLOCK = 100
     PATH = 30  # 算法规划的路径，绘图用
     ROAD = 50  # 窄路
     BROAD_ROAD = 70  # 宽路
@@ -41,7 +42,7 @@ class Workmap:
             self.map_data.append(input())
             for j in range(100):
                 if self.map_data[i][j] == '#':  # 障碍
-                    self.map_gray[i][j] = self.BOLCK
+                    self.map_gray[i][j] = self.BLOCK
                 elif self.map_data[i][j] == 'A':  # 机器人
                     x = i * 0.5 + 0.25
                     y = j * 0.5 + 0.25
@@ -62,7 +63,7 @@ class Workmap:
         for i in range(1, 99):
             for j in range(1, 99):
                 for x, y in itertools.product([-1, 0, 1], repeat=2):
-                    if self.map_gray[i+x][j+y] == self.BOLCK:
+                    if self.map_gray[i+x][j+y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.BROAD_ROAD
@@ -74,7 +75,7 @@ class Workmap:
                 for x, y in itertools.product([0, 1], repeat=2):
                     if i+x > 99 or j+y > 99:
                         continue
-                    if self.map_gray[i+x][j+y] == self.BOLCK:
+                    if self.map_gray[i+x][j+y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.ROAD
@@ -183,13 +184,34 @@ class Workmap:
         self.plt.imshow(path_map)
         self.plt.show()
 
+    def read_map_directly(self, map_path):
+        with open(map_path) as map:
+            lines = map.readlines()
+            for i, line in enumerate(lines):
+                self.map_data.append(line)
+                for j in range(100):
+                    if line[j] == '#':  # 障碍
+                        self.map_gray[i][j] = self.BLOCK
 
 if __name__ == '__main__':
-    map_gray = [[0]*50 for _ in range(50)]
+    # map_gray = [[0]*50 for _ in range(50)]
+    # import matplotlib.pyplot as plt
+    #
+    # map_gray[1] = [100]*50
+    # map_gray[2] = [50]*50
+    #
+    # plt.imshow(map_gray)
+    # plt.show(block=False)
     import matplotlib.pyplot as plt
 
-    map_gray[1] = [100]*50
-    map_gray[2] = [50]*50
-
-    plt.imshow(map_gray)
-    plt.show(block=False)
+    work_map = Workmap(debug=True)
+    work_map.read_map_directly("../maps/4.txt")
+    astar = AStar(work_map)
+    start = (47,68)
+    goal = (3,4)
+    astar.get_path(start,goal,False)
+    img = work_map.map_gray
+    img = np.array(img).astype('uint8')
+    plt.imshow(img)
+    plt.title("img")
+    plt.show()
