@@ -135,10 +135,11 @@ class Robot:
             rowb1 = nearest_row
             rowb2 = nearest_row - 1
         target1 = self.path[row1, :]
-        target2 = self.path[row2, :]
-        targetb1 = self.path[rowb1, :]
-        targetb2 = self.path[rowb2, :]
-        return line_ray_intersection2(target1, target2, targetb1, targetb2)
+        # target2 = self.path[row2, :]
+        # targetb1 = self.path[rowb1, :]
+        # targetb2 = self.path[rowb2, :]
+        return target1
+        # return line_ray_intersection2(target1, target2, targetb1, targetb2)
         # return line_ray_intersection(target1, target2, self.loc, self.toward)
 
     # 四个动作

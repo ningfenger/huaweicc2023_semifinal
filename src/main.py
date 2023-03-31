@@ -13,9 +13,6 @@ try:
 except:
     pass
 
-def read_util_ok():
-    while input() != "OK":
-        pass
 
 
 def finish():
@@ -24,7 +21,7 @@ def finish():
 
 
 if __name__ == '__main__':
-    workmap = Workmap(True)
+    workmap = Workmap()
     robots: List[Robot]= []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
     # 读入初始化地图
@@ -40,24 +37,17 @@ if __name__ == '__main__':
         workbenchs[idx].target_workbench_list = w2w 
     # 计算一下路径
     workmap.gen_paths()
-    # path = workmap.get_float_path(robots[1].loc, robots[1].target_workbench_list[0])
+    r_idx = 1
+    path = workmap.get_float_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[3])
     # 测试路径，非正式决策路径
-    astar = AStar(workmap)
-    w_target = 1
-    r_idx = 0
-    robots[r_idx].target = w_target
-    start_ = (robots[r_idx].loc[0], robots[r_idx].loc[1])
-    goal_ = (workbenchs[w_target].loc[0], workbenchs[w_target].loc[1])
-    start = (25.25, 49.75)
-    goal = (18.75, 49.75)
-    robots[r_idx].path = np.array(astar.get_path_cor(start, goal, False))
+    robots[r_idx].path = np.array(path)
     robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
     # 测试路径，非正式决策路径
     controller = Controller(robots, workbenchs, workmap)
     finish()
 
     while True:
-        frame_id, money = map(int, input())
+        frame_id, money = map(int, input().split())
         input()  # 工作台数量
         for workbench in workbenchs:  # 更新工作台
             workbench.update(input())

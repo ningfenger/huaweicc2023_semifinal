@@ -17,7 +17,7 @@ import time
 
 
 class Workmap:
-    BOLCK = 0  # 障碍
+    BLOCK = 0  # 障碍
     GROUND = 1  # 空地
     ROAD = 2  # 窄路, 临近的四个空地的左下角，因此如果经过这类点请从右上角走
     BROAD_ROAD = 3  # 宽路 瞄着中间走就行
@@ -79,7 +79,7 @@ class Workmap:
                     x, y = self.loc_int2float(i, j)
                     self.workbenchs_loc[(i, j)] = len(self.workbenchs_loc)
                     yield self.map_data[i][j], (x, y)
-        OK_str = input()  # 读入ok
+        input()  # 读入ok
         # if OK_str == 'OK':
         #     raise Exception('OK')
 
@@ -311,7 +311,7 @@ class Workmap:
             if '8' <= workbench_type <= '9':
                 flag1 = False  # 空手到8、9没有意义
             elif '1' <= workbench_type <= '3':
-                flag2 = False  # 拿着东西到1、2没有意义
+                flag2 = False  # 拿着东西到1、2、3没有意义
             if flag1:
                 self.buy_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, False)
