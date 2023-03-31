@@ -85,6 +85,19 @@ class AStar:
         self.__cost_dict = dict()
         self.__robot_with_product = False
 
+    def get_path_cor(self, start_cor, goal_cor, robot_with_product):
+        start = (100 - int(start_cor[1] * 2 - 0.5), int(start_cor[0] * 2 - 0.5))
+        goal = (100 - int(goal_cor[1] * 2 - 0.5), int(goal_cor[0] * 2 - 0.5))
+
+        # 格子到格子可以查表
+        self.get_path(start, goal, robot_with_product)
+        path = self.get_actual_path(goal)
+        path_cor = []
+        for point in path:
+            path_cor.append([point[1] * 0.5 + 0.25, (100 - point[0]) * 0.5 + 0.25])
+        return path_cor
+
+
     def get_path(self, start, goal, robot_with_product):
         """
         计算从起点到终点的最短路径

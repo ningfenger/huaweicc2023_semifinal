@@ -5,6 +5,7 @@ import itertools
 from workbench import Workbench
 from tools import *
 import numpy as np
+import time
 '''
 地图类，保存整张地图数据
 概念解释：
@@ -15,8 +16,8 @@ import numpy as np
 
 
 class Workmap:
-    GROUND = 0
-    BLOCK = 100
+    GROUND = 0  # 空地
+    BLOCK = 100 # 障碍物
     PATH = 30  # 算法规划的路径，绘图用
     ROAD = 50  # 窄路
     BROAD_ROAD = 70  # 宽路
@@ -44,16 +45,18 @@ class Workmap:
                 if self.map_data[i][j] == '#':  # 障碍
                     self.map_gray[i][j] = self.BLOCK
                 elif self.map_data[i][j] == 'A':  # 机器人
-                    x = i * 0.5 + 0.25
-                    y = j * 0.5 + 0.25
+                    x = j * 0.5 + 0.25
+                    y = (100 - i) * 0.5 - 0.25
                     self.robots_loc[(i, j)] = len(self.robots_loc)
                     yield 'A', (x, y)
                 elif '1' <= self.map_data[i][j] <= '9':  # 工作台
-                    x = i * 0.5 + 0.25
-                    y = j * 0.5 + 0.25
+                    x = j * 0.5 + 0.25
+                    y = (100 - i) * 0.5 - 0.25
                     self.workbenchs_loc[(i, j)] = len(self.workbenchs_loc)
                     yield self.map_data[i][j], (x, y)
-        input()  # 读入ok
+        OK_str = input()  # 读入ok
+        # if OK_str == 'OK':
+        #     raise Exception('OK')
 
     def init_roads(self):
         '''
@@ -207,11 +210,19 @@ if __name__ == '__main__':
     work_map = Workmap(debug=True)
     work_map.read_map_directly("../maps/4.txt")
     astar = AStar(work_map)
-    start = (47,68)
-    goal = (3,4)
-    astar.get_path(start,goal,False)
+    start = (25.25, 49.75)
+    goal = (18.75, 49.75)
+    T1 = time.time()
+    path = np.array(astar.get_path_cor(start,goal,False))
+    T2 = time.time()
+    print(T2 - T1)
     img = work_map.map_gray
     img = np.array(img).astype('uint8')
     plt.imshow(img)
     plt.title("img")
     plt.show()
+
+    fig = plt.figure()
+    plt.plot(path[:, 0], path[:, 1])
+    plt.show()
+    pass
