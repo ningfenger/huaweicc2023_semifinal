@@ -56,7 +56,7 @@ if __name__ == '__main__':
     robots[r_idx].path = np.array(astar.get_path_cor(start, goal, False))
     robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
     # 测试路径，非正式决策路径
-    controller = Controller(robots, workbenchs)
+    controller = Controller(robots, workbenchs, workmap)
     finish()
 
     while True:
