@@ -1,9 +1,82 @@
 # coding=utf-8
+import math
 from typing import Optional, List, Tuple
 import numpy as np
+import time
 '''
 机器人类
 '''
+def line_ray_intersection(target1, target2, loc, theta):
+    dircos_robot = [math.cos(theta), math.sin(theta)]
+
+    vex_1to2 = target2 - target1
+
+    length_1to2 = np.sqrt(np.sum(np.power(vex_1to2, 2)))
+
+    dircos_1to2 = vex_1to2 / length_1to2
+
+    A = np.array([[dircos_robot[0], -dircos_1to2[0]], [dircos_robot[1], -dircos_1to2[1]]])
+    B = np.array([[target1[0] - loc[0]], [target1[1] - loc[1]]])
+
+    # 使用克莱姆法则求解线性方程组
+    detA = np.linalg.det(A)
+    if detA != 0:
+        # 如果系数矩阵的行列式不为0，则有唯一解
+        t = np.zeros_like(B)
+        for i in range(2):
+            Ai = A.copy()
+            # time.sleep(20)
+            Ai[:, i] = B[:, 0]
+            detAi = np.linalg.det(Ai)
+            t[i] = detAi / detA
+
+        if t[0] > 0 and t[0] < 1 and t[1] < 0:
+            target_loc = [loc[0] + dircos_robot[0] * (t[0] + 1), loc[1] + dircos_robot[1] * (t[0] + 1)]
+        else:
+            target_loc = target1
+    else:
+        target_loc = target1
+    return target_loc
+
+
+def line_ray_intersection2(target1, target2, targetb1, targetb2):
+    m_len = 1.5
+    vex_b2tob1 = targetb1 - targetb2
+
+    length_b2tob1 = np.sqrt(np.sum(np.power(vex_b2tob1, 2)))
+
+    dircos_b2tob1 = vex_b2tob1 / length_b2tob1
+
+
+    vex_1to2 = target2 - target1
+
+    length_1to2 = np.sqrt(np.sum(np.power(vex_1to2, 2)))
+
+    dircos_1to2 = vex_1to2 / length_1to2
+
+    A = np.array([[dircos_b2tob1[0], -dircos_1to2[0]], [dircos_b2tob1[1], -dircos_1to2[1]]])
+    B = np.array([[target1[0] - targetb1[0]], [target1[1] - targetb1[1]]])
+
+    # 使用克莱姆法则求解线性方程组
+    detA = np.linalg.det(A)
+    if detA != 0:
+        # 如果系数矩阵的行列式不为0，则有唯一解
+        t = np.zeros_like(B)
+        for i in range(2):
+            Ai = A.copy()
+            # time.sleep(20)
+            Ai[:, i] = B[:, 0]
+            detAi = np.linalg.det(Ai)
+            t[i] = detAi / detA
+
+        if t[0] >= 0 and t[1] < 0:
+            target_loc = [targetb1[0] + dircos_b2tob1[0] * (t[0] + 1), targetb1[1] + dircos_b2tob1[1] * (t[0] + 1)]
+        else:
+            target_loc = target1
+    else:
+        target_loc = target1
+    return target_loc
+
 
 
 class Robot:
@@ -48,13 +121,25 @@ class Robot:
         '''
         return self.__plan[1]
 
-    def find_next_path(self):
+    def find_temp_tar(self):
         robot_pos = np.array(list(self.loc))
         dists = np.sqrt(np.sum((self.path - robot_pos) ** 2, axis=1))
         nearest_row = np.argmin(dists)
-        row = min(nearest_row + 1, len(self.path))
-        target = self.path[row, :]
-        return target
+        row1 = min(nearest_row + 1, len(self.path))
+        row2 = min(nearest_row + 2, len(self.path))
+        if nearest_row == 0:
+
+            rowb1 = min(nearest_row + 1, len(self.path))
+            rowb2 = nearest_row
+        else:
+            rowb1 = nearest_row
+            rowb2 = nearest_row - 1
+        target1 = self.path[row1, :]
+        target2 = self.path[row2, :]
+        targetb1 = self.path[rowb1, :]
+        targetb2 = self.path[rowb2, :]
+        return line_ray_intersection2(target1, target2, targetb1, targetb2)
+        # return line_ray_intersection(target1, target2, self.loc, self.toward)
 
     # 四个动作
     def forward(self, speed: float):
