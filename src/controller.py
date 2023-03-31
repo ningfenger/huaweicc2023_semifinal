@@ -12,7 +12,7 @@ class Controller:
     TOTAL_FRAME = 50*60*5
     # 控制参数
 
-    def __init__(self, robots: List[Workbench], workbenchs: List[Robot]):
+    def __init__(self, robots: List[Robot], workbenchs: List[Workbench]):
         self.robots = robots
         self.workbenchs = workbenchs
 

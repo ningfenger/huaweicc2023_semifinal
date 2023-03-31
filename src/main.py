@@ -23,7 +23,7 @@ def finish():
 
 
 if __name__ == '__main__':
-    workmap = Workmap()
+    workmap = Workmap(True)
     robots: List[Robot]= []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
     # 读入初始化地图
@@ -32,15 +32,24 @@ if __name__ == '__main__':
             robots.append(Robot(len(robots), loc))
         else:
             workbenchs.append(Workbench(len(workbenchs), int(t), loc))
+    import time
+    t1 = time.time()
     # 检测一下地图连通性
     workmap.init_roads()
-    workmap.draw_map()
+    # workmap.draw_map()
     for idx, r2w in enumerate(workmap.robot2workbench()):
         robots[idx].target_workbench_list = r2w
     for idx, w2w in enumerate(workmap.workbench2workbench()):
         workbenchs[idx].target_workbench_list = w2w 
     # 计算一下路径
-    pass
+    workmap.gen_paths()
+    t2 = time.time()
+    print("路径生成时间:", t2-t1)
+    # path = workmap.get_path(robots[1].loc, robots[1].target_workbench_list[0])
+    # workmap.draw_path(path)
+    path = workmap.get_path(robots[1].loc, robots[1].target_workbench_list[0])
+    print(path)
+    print("查表时间: ", time.time()-t2)
     controller = Controller(robots, workbenchs)
     finish()
 
