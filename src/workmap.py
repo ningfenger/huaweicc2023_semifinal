@@ -3,7 +3,6 @@ from typing import Optional, List, Tuple, Set
 import copy
 import itertools
 from workbench import Workbench
-from collections import deque
 from tools import *
 import numpy as np
 import time
