@@ -6,7 +6,6 @@ from workbench import Workbench
 from controller import Controller
 from typing import Optional, List
 import numpy as np
-import logging
 import os
 from tools import *
 try:
@@ -26,9 +25,6 @@ def finish():
 
 if __name__ == '__main__':
     workmap = Workmap(True)
-    logging.basicConfig(filename='log.log', level= logging.DEBUG)
-    logging.info('===================')
-    workmap = Workmap()
     robots: List[Robot]= []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
     # 读入初始化地图
@@ -37,8 +33,8 @@ if __name__ == '__main__':
             robots.append(Robot(len(robots), loc))
         else:
             workbenchs.append(Workbench(len(workbenchs), int(t), loc))
-    import time
-    t1 = time.time()
+    # import time
+    # t1 = time.time()
     # 检测一下地图连通性
     workmap.init_roads()
     # workmap.draw_map()
@@ -48,13 +44,13 @@ if __name__ == '__main__':
         workbenchs[idx].target_workbench_list = w2w 
     # 计算一下路径
     workmap.gen_paths()
-    t2 = time.time()
-    print("路径生成时间:", t2-t1)
+    # t2 = time.time()
+    # print("路径生成时间:", t2-t1)
     # path = workmap.get_path(robots[1].loc, robots[1].target_workbench_list[0])
     # workmap.draw_path(path)
     path = workmap.get_path(robots[1].loc, robots[1].target_workbench_list[0])
-    print(path)
-    print("查表时间: ", time.time()-t2)
+    # print(path)
+    # print("查表时间: ", time.time()-t2)
     # 测试路径，非正式决策路径
     astar = AStar(workmap)
     w_target = 1
@@ -71,10 +67,7 @@ if __name__ == '__main__':
     finish()
 
     while True:
-        logging.info('==')
-        a = input()
-        logging.info(a)
-        frame_id, money = map(int, a.split())
+        frame_id, money = map(int, input())
         input()  # 工作台数量
         for workbench in workbenchs:  # 更新工作台
             workbench.update(input())
