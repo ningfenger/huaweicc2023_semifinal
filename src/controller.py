@@ -1,7 +1,11 @@
 # coding=utf-8
+import numpy as np
+
+
 from robot import Robot
 from workbench import Workbench
 from typing import Optional, List
+import math
 '''
 控制类 决策，运动
 '''
@@ -16,8 +20,25 @@ class Controller:
         self.robots = robots
         self.workbenchs = workbenchs
 
-    def move(self):
+    def move(self, idx_robot):
+        # 机器人沿着指定路线移动
+        k_r = 10
+
+        target_loc_local = self.robots[idx_robot].find_next_path()
+        target_vec = [target_loc_local[0] - self.robots[idx_robot].loc[0], target_loc_local[1] - self.robots[idx_robot].loc[1]]
+        target_theta = np.arctan2(target_vec[1], target_vec[0])
+        robot_theta = self.robots[idx_robot].toward
+        delta_theta = target_theta - robot_theta
+        delta_theta = (delta_theta + math.pi) % (2 * math.pi) - math.pi
+        self.robots[idx_robot].rotate(delta_theta * k_r)
+        print("forward", idx_robot, 3)
         pass
 
     def control(self, frame_id: int, money: int):
-        pass
+
+        print(frame_id)
+        for i in range(4):
+            if self.robots[i].status == Robot.MOVE_TO_BUY_STATUS:
+                # 前往购买
+                self.move(i)
+

@@ -5,8 +5,12 @@ __pycache__/
 *$py.class
 *.pyc
 .vscode/
+<<<<<<< HEAD
 replayer/
 
+=======
+.idea/
+>>>>>>> e83530541158088c2e983772290ca2a6396be98f
 # C extensions
 *.so
 

@@ -1,5 +1,6 @@
 # coding=utf-8
 from typing import Optional, List, Tuple
+import numpy as np
 '''
 机器人类
 '''
@@ -27,6 +28,7 @@ class Robot:
         self.target = -1  # 当前机器人的目标控制台 -1代表无目标
         self.__plan = (-1, -1)  # 设定买和卖的目标工作台
         self.target_workbench_list = []  # 可到达的工作台列表
+        self.path = []
 
     def set_plan(self, buy_ID: int, sell_ID: int):
         '''
@@ -45,6 +47,14 @@ class Robot:
         获取卖的目标
         '''
         return self.__plan[1]
+
+    def find_next_path(self):
+        robot_pos = np.array(list(self.loc))
+        dists = np.sqrt(np.sum((self.path - robot_pos) ** 2, axis=1))
+        nearest_row = np.argmin(dists)
+        row = min(nearest_row + 1, len(self.path))
+        target = self.path[row, :]
+        return target
 
     # 四个动作
     def forward(self, speed: float):

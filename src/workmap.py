@@ -4,6 +4,9 @@ import copy
 import itertools
 from workbench import Workbench
 from collections import deque
+from tools import *
+import numpy as np
+import time
 
 '''
 地图类，保存整张地图数据
@@ -68,7 +71,7 @@ class Workmap:
             self.map_data.append(input())
             for j in range(100):
                 if self.map_data[i][j] == '#':  # 障碍
-                    self.map_gray[i][j] = self.BOLCK
+                    self.map_gray[i][j] = self.BLOCK
                 elif self.map_data[i][j] == 'A':  # 机器人
                     x, y = self.loc_int2float(i, j)
                     self.robots_loc[(i, j)] = len(self.robots_loc)
@@ -77,7 +80,9 @@ class Workmap:
                     x, y = self.loc_int2float(i, j)
                     self.workbenchs_loc[(i, j)] = len(self.workbenchs_loc)
                     yield self.map_data[i][j], (x, y)
-        input()  # 读入ok
+        OK_str = input()  # 读入ok
+        # if OK_str == 'OK':
+        #     raise Exception('OK')
 
     def init_roads(self):
         '''
@@ -87,7 +92,7 @@ class Workmap:
         for i in range(1, 99):
             for j in range(1, 99):
                 for x, y in itertools.product([-1, 0, 1], repeat=2):
-                    if self.map_gray[i+x][j+y] == self.BOLCK:
+                    if self.map_gray[i+x][j+y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.BROAD_ROAD
@@ -102,7 +107,7 @@ class Workmap:
                 for x, y in itertools.product([0, 1], repeat=2):
                     if i+x > 99 or j+y > 99:
                         continue
-                    if self.map_gray[i+x][j+y] == self.BOLCK:
+                    if self.map_gray[i+x][j+y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.ROAD
@@ -255,7 +260,7 @@ class Workmap:
         workbench_loc: 当前节点坐标
         broad_road: 是否只能走宽路
         '''
-        could_reach = set() # 可到达的节点集合
+        could_reach = set()  # 可到达的节点集合
         if broad_road:
             target_map = self.sell_map[workbench_ID]
             low_value = self.BROAD_ROAD
@@ -268,9 +273,9 @@ class Workmap:
             next_x, next_y = loc_x + x, loc_y + y
             if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
                 continue
-            could_reach.add((next_x, next_y)) # 将周围节点标记为可到达
+            could_reach.add((next_x, next_y))  # 将周围节点标记为可到达
         while could_reach:
-            tmp_reach = set() # 暂存新一轮可到达点
+            tmp_reach = set()  # 暂存新一轮可到达点
             for node_x, node_y in could_reach:
                 aim_loc = None
                 min_angle_diff = 4  # 减少转弯
@@ -283,7 +288,7 @@ class Workmap:
                         abs(last_y+node_y-2*test_y)
                     if angle_diff < min_angle_diff:
                         min_angle_diff = angle_diff
-                        aim_loc = (test_x, test_y)  
+                        aim_loc = (test_x, test_y)
                     if angle_diff == 0:
                         break
                 target_map[node_x][node_y] = aim_loc
@@ -291,7 +296,7 @@ class Workmap:
                     next_x, next_y = node_x + x, node_y + y
                     if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or target_map[next_x][next_y] or self.map_gray[next_x][next_y] < low_value:
                         continue
-                    tmp_reach.add((next_x, next_y)) # 将周围节点标记为可到达
+                    tmp_reach.add((next_x, next_y))  # 将周围节点标记为可到达
             could_reach = tmp_reach
 
     def gen_paths(self):
@@ -314,6 +319,7 @@ class Workmap:
             if flag2:
                 self.sell_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, True)
+
     def get_float_path(self, float_loc, workbench_ID, broad_road=False):
         '''
         获取浮点型的路径
@@ -333,7 +339,7 @@ class Workmap:
         broad_road: 是否只能走宽路   
         返回路径(int点的集合)
         '''
-        if broad_road: # 决定要查哪个地图
+        if broad_road:  # 决定要查哪个地图
             target_map = self.sell_map[workbench_ID]
         else:
             target_map = self.buy_map[workbench_ID]
@@ -344,15 +350,15 @@ class Workmap:
                 if target_map[test_x][test_y]:
                     node_x, node_y = test_x, test_y
                     break
-            else: # 当前点和临近点都无法到达目的地
+            else:  # 当前点和临近点都无法到达目的地
                 return []
         path = []
         x, y = node_x, node_y
         while 1:
-            path.append((x,y))
-            if (x,y) == target_map[x][y]:
+            path.append((x, y))
+            if (x, y) == target_map[x][y]:
                 break
-            x,y = target_map[x][y]
+            x, y = target_map[x][y]
         return path
 
     def get_roadID(self, loc: Tuple[int]) -> int:
@@ -393,13 +399,43 @@ class Workmap:
         self.plt.imshow(path_map)
         self.plt.show()
 
+    def read_map_directly(self, map_path):
+        with open(map_path) as map:
+            lines = map.readlines()
+            for i, line in enumerate(lines):
+                self.map_data.append(line)
+                for j in range(100):
+                    if line[j] == '#':  # 障碍
+                        self.map_gray[i][j] = self.BLOCK
+
 
 if __name__ == '__main__':
-    map_gray = [[0]*50 for _ in range(50)]
+    # map_gray = [[0]*50 for _ in range(50)]
+    # import matplotlib.pyplot as plt
+    #
+    # map_gray[1] = [100]*50
+    # map_gray[2] = [50]*50
+    #
+    # plt.imshow(map_gray)
+    # plt.show(block=False)
     import matplotlib.pyplot as plt
 
-    map_gray[1] = [100]*50
-    map_gray[2] = [50]*50
+    work_map = Workmap(debug=True)
+    work_map.read_map_directly("../maps/4.txt")
+    astar = AStar(work_map)
+    start = (25.25, 49.75)
+    goal = (18.75, 49.75)
+    T1 = time.time()
+    path = np.array(astar.get_path_cor(start, goal, False))
+    T2 = time.time()
+    print(T2 - T1)
+    img = work_map.map_gray
+    img = np.array(img).astype('uint8')
+    plt.imshow(img)
+    plt.title("img")
+    plt.show()
 
-    plt.imshow(map_gray)
-    plt.show(block=False)
+    fig = plt.figure()
+    plt.plot(path[:, 0], path[:, 1])
+    plt.show()
+    pass
