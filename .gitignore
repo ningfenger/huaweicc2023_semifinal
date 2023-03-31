@@ -5,6 +5,7 @@ __pycache__/
 *$py.class
 *.pyc
 .vscode/
+replayer/
 
 # C extensions
 *.so
