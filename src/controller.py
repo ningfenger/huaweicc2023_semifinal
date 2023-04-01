@@ -45,7 +45,7 @@ class Controller:
         if abs(delta_theta) > math.pi / 4:
             print("forward", idx_robot, 0)
         else:
-            print("forward", idx_robot, 3)
+            print("forward", idx_robot, 6)
         pass
 
     def control(self, frame_id: int, money: int):
