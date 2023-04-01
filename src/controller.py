@@ -212,8 +212,7 @@ class Controller:
                 # 格子里有这个原料
                 # 判断是不是8或9 不是8或9 且这个原料格子已经被占用的情况, 生产完了并不一定能继续生产
                 frame_wait_sell = 0
-                if Workbench.WORKSTAND_OUT[workbench_buy.typeID] and workbench_sell.check_material(
-                        workbench_buy.typeID):
+                if Workbench.WORKSTAND_OUT[workbench_buy.typeID] and workbench_sell.check_material(workbench_buy.typeID):
                     continue
                     # 阻塞或者材料格没满
                     if workbench_sell.product_time in [-1, 0] or not workbench_sell.check_materials_full():
