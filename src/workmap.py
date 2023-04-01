@@ -6,6 +6,7 @@ from workbench import Workbench
 from tools import *
 import numpy as np
 import time
+from functools import cache
 
 '''
 地图类，保存整张地图数据
@@ -42,6 +43,7 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
 
+    @cache
     def loc_int2float(self, i, j, rode=False):
         '''
         地图离散坐标转实际连续坐标
