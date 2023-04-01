@@ -49,11 +49,11 @@ class Workmap:
         地图离散坐标转实际连续坐标
         rode: 标识是否是窄路，窄路按原先右上角
         '''
-        x = 0.5 * j + 0.45
-        y = (100 - i) * 0.5 - 0.5
+        x = 0.5 * j + 0.25
+        y = (100 - i) * 0.5 - 0.25
         if rode:
             x += 0.25
-            y -= 0.5
+            y -= 0.25
         return x, y
 
     def loc_float2int(self, x, y):

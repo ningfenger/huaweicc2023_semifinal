@@ -50,6 +50,8 @@ class Robot:
         '''
         return self.__plan[1]
 
+
+
     def find_temp_tar(self):
         robot_pos = np.array(list(self.loc))
         dists = np.sqrt(np.sum((self.path - robot_pos) ** 2, axis=1))
@@ -63,7 +65,11 @@ class Robot:
         else:
             rowb1 = nearest_row
             rowb2 = nearest_row - 1
-        target1 = self.path[row1, :]
+
+        try:
+            target1 = self.path[row1, :]
+        except:
+            raise Exception(self.path)
         target2 = self.path[row2, :]
         # targetb1 = self.path[rowb1, :]
         # targetb2 = self.path[rowb2, :]

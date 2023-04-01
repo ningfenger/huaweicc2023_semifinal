@@ -1,5 +1,7 @@
 # coding=utf-8
 import sys
+import time
+
 from workmap import Workmap
 from robot import Robot
 from workbench import Workbench
@@ -48,6 +50,7 @@ if __name__ == '__main__':
     # robots[r_idx].path = np.array(path)
     # robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
     # 测试路径，非正式决策路径
+    # time.sleep(10)
     controller = Controller(robots, workbenchs, workmap)
     finish()
 

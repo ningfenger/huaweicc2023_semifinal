@@ -29,6 +29,12 @@ class Controller:
         self.m_map = m_map
         self.m_map_arr = np.array(m_map.map_gray)
 
+    def dis2target(self, idx_robot):
+        idx_workbench = self.robots[idx_robot].target
+        w_loc = self.workbenchs[idx_workbench].loc
+        r_loc = self.robots[idx_robot].loc
+        return np.sqrt((r_loc[0] - w_loc[0])**2 + (r_loc[1] - w_loc[1])**2)
+
     def radar(self, idx_robot, d_theta):
         # 当前位置与朝向
         point = self.robots[idx_robot].loc
@@ -133,9 +139,12 @@ class Controller:
 
     def move(self, idx_robot):
         # 机器人沿着指定路线移动
-        k_r = 10
-        dis_l = self.radar(idx_robot, math.pi / 6)
-        dis_r = self.radar(idx_robot, -math.pi / 6)
+        k_r = 8
+        dis_l = self.radar(idx_robot, math.pi / 3)
+        dis_r = self.radar(idx_robot, -math.pi / 3)
+        far_flag = False
+        if self.dis2target(idx_robot) > 2:
+            far_flag = True
         target_loc_local, target_loc_further = self.robots[idx_robot].find_temp_tar()
 
         target_vec_local = [target_loc_local[0] - self.robots[idx_robot].loc[0],
@@ -148,6 +157,12 @@ class Controller:
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta_local = target_theta_local - robot_theta
+        safe_dis = 1.2
+        # if abs(delta_theta_local) < math.pi / 6:
+        #     if dis_l < safe_dis and far_flag:
+        #         delta_theta_local -= math.pi * (safe_dis - dis_l) / 5
+        #     if dis_r < safe_dis and far_flag:
+        #         delta_theta_local += math.pi * (safe_dis - dis_l) / 5
         delta_theta_local = (delta_theta_local + math.pi) % (2 * math.pi) - math.pi
 
         delta_theta_further = target_theta_further - robot_theta
@@ -275,7 +290,7 @@ class Controller:
                 # 移动
                 # 判断距离是否够近
 
-                # self.move2loc_new(idx_robot)
+                # self.move(idx_robot)
 
                 # 判定是否进入交互范围
                 if robot.workbench_ID == robot.target:
