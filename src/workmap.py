@@ -6,7 +6,7 @@ from workbench import Workbench
 from tools import *
 import numpy as np
 import time
-from functools import cache
+from functools import lru_cache
 
 '''
 地图类，保存整张地图数据
@@ -34,7 +34,7 @@ class Workmap:
         # 二值地图 0为空地 100为墙 50 为路径
         self.robots_loc: dict = {}  # k 机器人坐标点 v 机器人ID
         self.workbenchs_loc: dict = {}  # k 工作台坐标点 v 工作台ID
-        self.map_gray = [[self.GROUND]*100 for _ in range(100)]
+        self.map_gray = [[self.GROUND] * 100 for _ in range(100)]
         if debug:
             import matplotlib.pyplot as plt
             self.plt = plt
@@ -43,14 +43,14 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
 
-    @cache
-    def loc_int2float(self, i, j, rode=False):
+    @lru_cache
+    def loc_int2float(self, i: int, j: int, rode=False):
         '''
         地图离散坐标转实际连续坐标
         rode: 标识是否是窄路，窄路按原先右上角
         '''
-        x = 0.5*j+0.45
-        y = (100-i)*0.5-0.5
+        x = 0.5 * j + 0.45
+        y = (100 - i) * 0.5 - 0.5
         if rode:
             x += 0.25
             y -= 0.5
@@ -60,8 +60,8 @@ class Workmap:
         '''
         地图实际连续坐标转离散坐标
         '''
-        i = round(100 - (y+0.25)*2)
-        j = round((x-0.25)*2)
+        i = round(100 - (y + 0.25) * 2)
+        j = round((x - 0.25) * 2)
         return i, j
 
     def read_map(self):
@@ -93,7 +93,7 @@ class Workmap:
         for i in range(1, 99):
             for j in range(1, 99):
                 for x, y in itertools.product([-1, 0, 1], repeat=2):
-                    if self.map_gray[i+x][j+y] == self.BLOCK:
+                    if self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.BROAD_ROAD
@@ -106,9 +106,9 @@ class Workmap:
                     self.map_gray[i][j] = self.ROAD
                     continue
                 for x, y in itertools.product([0, 1], repeat=2):
-                    if i+x > 99 or j+y > 99:
+                    if i + x > 99 or j + y > 99:
                         continue
-                    if self.map_gray[i+x][j+y] == self.BLOCK:
+                    if self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.ROAD
@@ -120,7 +120,7 @@ class Workmap:
         res = [[] for _ in self.robots_loc]
         visited_robot = []  # 如果在遍历过程中找到了其他机器人，说明他两个的地点是可以相互到达的，进而可访问的工作台也是相同的
         visited_workbench = []  # 记录可达的工作台ID
-        visited_loc = [[False]*100 for _ in range(100)]  # 记录访问过的节点
+        visited_loc = [[False] * 100 for _ in range(100)]  # 记录访问过的节点
         for robot_loc, robot_ID in self.robots_loc.items():
             if res[robot_ID]:  # 已经有内容了，不必再更新
                 continue
@@ -128,8 +128,9 @@ class Workmap:
             while dq:
                 i, j = dq.pop()
                 for x, y in self.TURNS:
-                    n_x, n_y = i+x, j+y
-                    if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][n_y] < self.ROAD:
+                    n_x, n_y = i + x, j + y
+                    if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][
+                        n_y] < self.ROAD:
                         continue
                     dq.append((n_x, n_y))
                     visited_loc[n_x][n_y] = True
@@ -151,7 +152,7 @@ class Workmap:
         '''
         res = [[] for _ in self.workbenchs_loc]
         visited_workbench = []  # 记录可达的工作台ID及类型, 在这同一个列表中的工作台说明可以相互访问
-        visited_loc = [[False]*100 for _ in range(100)]  # 记录访问过的节点
+        visited_loc = [[False] * 100 for _ in range(100)]  # 记录访问过的节点
         for workbench_loc, workbench_ID in self.workbenchs_loc.items():
             if res[workbench_ID]:  # 已经有内容了，不必再更新
                 continue
@@ -161,9 +162,10 @@ class Workmap:
             while dq:
                 i, j = dq.pop()
                 for x, y in self.TURNS:
-                    n_x, n_y = i+x, j+y
+                    n_x, n_y = i + x, j + y
                     # 因为是卖的过程，必须是宽路
-                    if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][n_y] != self.BROAD_ROAD:
+                    if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][
+                        n_y] != self.BROAD_ROAD:
                         continue
                     dq.append((n_x, n_y))
                     visited_loc[n_x][n_y] = True
@@ -282,20 +284,21 @@ class Workmap:
             for node_x, node_y in reach:
                 last_x, last_y = target_map[node_x][node_y]
                 for i, j in self.TURNS:
-                    next_x, next_y = node_x + i, node_y+j
-                    if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
+                    next_x, next_y = node_x + i, node_y + j
+                    if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][
+                        next_y] < low_value:
                         continue
                     if (next_x, next_y) not in tmp_reach:
                         if target_map[next_x][next_y]:  # 已被访问过说明是已经添加到树中的节点
                             continue
                         else:
-                            angle_diff = abs(last_x+node_x-2*next_x) + \
-                                abs(last_y+node_y-2*next_y)
+                            angle_diff = abs(last_x + node_x - 2 * next_x) + \
+                                         abs(last_y + node_y - 2 * next_y)
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
                     else:
-                        angle_diff = abs(last_x+node_x-2*next_x) + \
-                            abs(last_y+node_y-2*next_y)
+                        angle_diff = abs(last_x + node_x - 2 * next_x) + \
+                                     abs(last_y + node_y - 2 * next_y)
                         if angle_diff < tmp_reach[(next_x, next_y)]:
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
@@ -348,7 +351,7 @@ class Workmap:
         node_x, node_y = self.loc_float2int(*float_loc)
         if not target_map[node_x][node_y]:
             for x, y in self.TURNS:
-                test_x, test_y = node_x+x, node_y+y
+                test_x, test_y = node_x + x, node_y + y
                 if target_map[test_x][test_y]:
                     node_x, node_y = test_x, test_y
                     break
@@ -395,7 +398,7 @@ class Workmap:
         '''
         绘制一个路径
         '''
-        path_map = copy.copy(self.map_gray)
+        path_map = copy.deepcopy(self.map_gray)
         for x, y in path:
             path_map[x][y] = self.PATH
         self.plt.imshow(path_map)

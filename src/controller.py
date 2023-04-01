@@ -223,7 +223,7 @@ class Controller:
             idx_workbench_to_buy = robot.get_buy()
             idx_workbench_to_sell = robot.get_sell()
             robot.target = idx_workbench_to_buy
-            robot.path = np.array(self.m_map.get_path(robot.loc, idx_workbench_to_buy))
+            robot.path = np.array(self.m_map.get_float_path(robot.loc, idx_workbench_to_buy))
             # 预定工作台
             self.workbenchs[idx_workbench_to_buy].pro_buy()
             self.workbenchs[idx_workbench_to_sell].pro_sell(self.workbenchs[idx_workbench_to_buy].typeID)
@@ -246,9 +246,7 @@ class Controller:
                 # 【购买途中】
                 self.move(idx_robot)
                 # 判定是否进入交互范围
-                if 0:
-                    # if self._robots.get_status(feature_workstand_id_r, idx_robot) == self._robots.get_status(
-                    #         feature_target_r, idx_robot):
+                if robot.workbench_ID == robot.target:
                     # 记录任务分配时的时间 距离 角度相差
                     robot.status = Robot.WAIT_TO_BUY_STATUS  # 切换为 【等待购买】
                     continue
@@ -266,11 +264,11 @@ class Controller:
                         idx_workbench_to_sell = robot.get_sell()
                         robot.target = idx_workbench_to_sell  # 更新目标到卖出地点
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 切换为 【出售途中】
-                        robot.path = self.m_map.get_path(robot.loc, robot.get_sell(), True)
+                        robot.path = self.m_map.get_float_path(robot.loc, robot.get_sell(), True)
                         continue
                     else:
                         robot.status = Robot.MOVE_TO_BUY_STATUS
-                        robot.path = self.m_map.get_path(robot.loc, robot.get_buy())
+                        robot.path = self.m_map.get_float_path(robot.loc, robot.get_buy())
                         continue
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
@@ -280,9 +278,7 @@ class Controller:
                 # self.move2loc_new(idx_robot)
 
                 # 判定是否进入交互范围
-                if 1:
-                    # if self._robots.get_status(feature_workstand_id_r, idx_robot) == self._robots.get_status(
-                    #         feature_target_r, idx_robot):
+                if robot.workbench_ID == robot.target:
                     robot.status = Robot.WAIT_TO_SELL_STATUS  # 切换为 【等待出售】
                     # logging.debug(f"{idx_robot}->ready to sell")
                     # 记录任务分配时的时间 距离 角度相差
@@ -306,7 +302,7 @@ class Controller:
                         # logging.debug(f"{idx_robot}->wait")
                     else:
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 购买失败说明位置不对，切换为 【出售途中】
-                        robot.path = self.m_map.get_path(robot.loc, robot.get_sell(), True)
+                        robot.path = self.m_map.get_float_path(robot.loc, robot.get_sell(), True)
                     continue
             idx_robot += 1
         for idx_robot in sell_out_list:
