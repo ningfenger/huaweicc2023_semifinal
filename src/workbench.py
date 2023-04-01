@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple
 工作台类
 '''
 
-import logging
+# import logging
 
 # logging.basicConfig(filename='log.log', level=logging.DEBUG)
 class Workbench:
@@ -37,7 +37,7 @@ class Workbench:
         self.sell_price = self.ITEMS_SELL[self.typeID] if self.typeID < len(self.ITEMS_SELL) else 0  # 售价
             
 
-    def get_materials_num(self):  # 返回格子数目
+    def get_materials_num(self):  # 返回已被占用的格子数目
         num = 0
         v = self.material
         while v:
@@ -58,6 +58,7 @@ class Workbench:
         检测原材料是否已放置
         True表示已有材料
         '''
+        # logging.info(f'WorkbenchID: {self.ID}, self.material: {self.material} mateial_ID: {mateial_ID} res:{1 << mateial_ID & self.material != 0}')
         return 1 << mateial_ID & self.material != 0
 
     def check_material_pro(self, mateial_ID: int) -> bool:
@@ -65,6 +66,7 @@ class Workbench:
         检测原材料格子是否已被预订
         True表示已有材料
         '''
+        # logging.info(f'WorkbenchID: {self.ID}, self.material_pro: {self.material_pro} mateial_ID: {mateial_ID} res:{1 << mateial_ID & self.material_pro != 0}')
         return 1 << mateial_ID & self.material_pro != 0
 
     def pro_sell(self,  mateial_ID: int, sell=True) -> bool:

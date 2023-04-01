@@ -74,10 +74,7 @@ class Robot:
             rowb1 = nearest_row
             rowb2 = nearest_row - 1
 
-        try:
-            target1 = self.path[row1, :]
-        except:
-            raise Exception([row1, self.path])
+        target1 = self.path[row1, :]
         target2 = self.path[row2, :]
         # targetb1 = self.path[rowb1, :]
         # targetb2 = self.path[rowb2, :]

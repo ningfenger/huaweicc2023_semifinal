@@ -43,7 +43,7 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
 
-    @lru_cache
+    @lru_cache(None)
     def loc_int2float(self, i: int, j: int, rode=False):
         '''
         地图离散坐标转实际连续坐标
@@ -332,9 +332,10 @@ class Workmap:
         返回路径(换算好的float点的集合)
         '''
         path = self.get_path(float_loc, workbench_ID, broad_road)
-        for i in range(len(path)):
+        for i in range(len(path)-1):
             x, y = path[i]
             path[i] = self.loc_int2float(x, y, self.map_gray[x][y] == self.ROAD)
+        path[-1] = self.loc_int2float(*path[-1]) 
         return path
 
     def get_path(self, float_loc, workbench_ID, broad_road=False):

@@ -142,12 +142,10 @@ class Controller:
         # 机器人沿着指定路线移动
 
         k_r = 8
-        # 距离目标工作台的距离
-        dis_target = self.dis2target(idx_robot)
         dis_l = self.radar(idx_robot, math.pi / 3)
         dis_r = self.radar(idx_robot, -math.pi / 3)
         far_flag = False
-        if dis_target > 2:
+        if self.dis2target(idx_robot) > 2:
             far_flag = True
         target_loc_local, target_loc_further = self.robots[idx_robot].find_temp_tar()
 
@@ -156,7 +154,7 @@ class Controller:
                             target_loc_local[1] - self.robots[idx_robot].loc[1]]
         target_theta_local = np.arctan2(
             target_vec_local[1], target_vec_local[0])
-        dis_local = np.sqrt(np.dot(target_vec_local, target_vec_local))
+
         target_vec_further = [target_loc_further[0] - self.robots[idx_robot].loc[0],
                               target_loc_further[1] - self.robots[idx_robot].loc[1]]
         target_theta_further = np.arctan2(
@@ -164,12 +162,12 @@ class Controller:
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta_local = target_theta_local - robot_theta
-        safe_dis = 1.2
-        if abs(delta_theta_local) < math.pi / 6:
-            if dis_l < safe_dis and far_flag:
-                delta_theta_local -= math.pi * (safe_dis - dis_l) / 5
-            if dis_r < safe_dis and far_flag:
-                delta_theta_local += math.pi * (safe_dis - dis_l) / 5
+        # safe_dis = 1.2
+        # if abs(delta_theta_local) < math.pi / 6:
+        #     if dis_l < safe_dis and far_flag:
+        #         delta_theta_local -= math.pi * (safe_dis - dis_l) / 5
+        #     if dis_r < safe_dis and far_flag:
+        #         delta_theta_local += math.pi * (safe_dis - dis_l) / 5
         delta_theta_local = (delta_theta_local + math.pi) % (2 * math.pi) - math.pi
         delta_theta_further = target_theta_further - robot_theta
         delta_theta_further = (delta_theta_further +
@@ -177,14 +175,11 @@ class Controller:
 
         self.robots[idx_robot].rotate(delta_theta_local * k_r)
         if abs(delta_theta_local) > math.pi / 4:
-            print("forward", idx_robot, 1)
+            print("forward", idx_robot, 0)
         elif abs(delta_theta_further) > math.pi / 4:
-            print("forward", idx_robot, dis_local / 3)
+            print("forward", idx_robot, 3)
         else:
             print("forward", idx_robot, 6)
-
-        if idx_robot == 1:
-            a = 10000000
         pass
 
     def get_time_rate(self, frame_sell: float) -> float:
@@ -217,7 +212,7 @@ class Controller:
                 # 格子里有这个原料
                 # 判断是不是8或9 不是8或9 且这个原料格子已经被占用的情况, 生产完了并不一定能继续生产
                 frame_wait_sell = 0
-                if Workbench.WORKSTAND_OUT[workbench_buy.typeID] and workbench_sell.check_material(workbench_buy.typeID):
+                if workbench_sell.check_material(workbench_buy.typeID):
                     continue
                     # 阻塞或者材料格没满
                     if workbench_sell.product_time in [-1, 0] or not workbench_sell.check_materials_full():
@@ -331,11 +326,13 @@ class Controller:
                         # 取消预定
                         sell_out_list.append(idx_robot)
                         robot.status = Robot.FREE_STATUS
+                        # 这个机器人不能再决策了, 不然目标更新，状态会被清错
+                        # continue
                         # logging.debug(f"{idx_robot}->wait")
                     else:
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 购买失败说明位置不对，切换为 【出售途中】
                         robot.set_path(self.m_map.get_float_path(robot.loc, idx_workbench_to_sell, True))
-                    continue
+                        continue
             idx_robot += 1
         for idx_robot in sell_out_list:
             robot = self.robots[idx_robot]
