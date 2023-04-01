@@ -38,6 +38,14 @@ class Robot:
         '''
         self.__plan = buy_ID, sell_ID
 
+    def set_path(self, path: List[Tuple[float, float]]):
+        '''
+        设置机器人移动路径
+        :param path: 路径，float型的坐标列表
+        :return:
+        '''
+        self.path = np.array(path)
+
     def get_buy(self) -> int:
         '''
         获取买的目标
@@ -69,7 +77,7 @@ class Robot:
         try:
             target1 = self.path[row1, :]
         except:
-            raise Exception(self.path)
+            raise Exception([row1, self.path])
         target2 = self.path[row2, :]
         # targetb1 = self.path[rowb1, :]
         # targetb2 = self.path[rowb2, :]
