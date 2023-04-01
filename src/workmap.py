@@ -333,7 +333,8 @@ class Workmap:
         '''
         path = self.get_path(float_loc, workbench_ID, broad_road)
         for i in range(len(path)):
-            path[i] = self.loc_int2float(*path[i])
+            x, y = path[i]
+            path[i] = self.loc_int2float(x, y, self.map_gray[x][y] == self.ROAD)
         return path
 
     def get_path(self, float_loc, workbench_ID, broad_road=False):
