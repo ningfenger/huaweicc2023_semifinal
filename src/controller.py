@@ -18,7 +18,7 @@ class Controller:
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
     MOVE_SPEED = 1 / 4.15 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
-    MAX_WAIT = 3.14 * 50  # 最大等待时间 
+    MAX_WAIT = 3.14 * 50  # 最大等待时间
     SELL_WEIGHT = 1.45  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.8  # 非 7 卖给89的惩罚
     CONSERVATIVE = 1 + 1 / MOVE_SPEED * 4  # 保守程度 最后时刻要不要操作
@@ -72,11 +72,11 @@ class Controller:
                 # 1 2 象限
                 y_set_ygrid = np.arange(raw + 1, min(raw + 4, 99), 1) * 0.5
 
-
             else:
                 # 3 4 象限
                 y_set_ygrid = np.arange(raw, max(raw - 3, 0), -1) * 0.5
-            x_set_ygrid = 1 / np.tan(theta) * (y_set_ygrid - point[1]) + point[0]
+            x_set_ygrid = 1 / np.tan(theta) * \
+                (y_set_ygrid - point[1]) + point[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -101,7 +101,8 @@ class Controller:
         y_set_mid = (y_set_near + y_set_far) / 2
 
         mask = np.zeros_like(x_set_mid, dtype=bool)
-        mask[(x_set_mid >= 0) & (x_set_mid <= 50) & (y_set_mid >= 0) & (y_set_mid <= 50)] = True
+        mask[(x_set_mid >= 0) & (x_set_mid <= 50) & (
+            y_set_mid >= 0) & (y_set_mid <= 50)] = True
         x_set_mid = x_set_mid[mask]
         y_set_mid = y_set_mid[mask]
         idx_ob = -1
@@ -136,22 +137,27 @@ class Controller:
         k_r = 10
         dis_l = self.radar(idx_robot, math.pi / 6)
         dis_r = self.radar(idx_robot, -math.pi / 6)
-        target_loc_local, target_loc_further = self.robots[idx_robot].find_temp_tar()
+        target_loc_local, target_loc_further = self.robots[idx_robot].find_temp_tar(
+        )
 
         target_vec_local = [target_loc_local[0] - self.robots[idx_robot].loc[0],
                             target_loc_local[1] - self.robots[idx_robot].loc[1]]
-        target_theta_local = np.arctan2(target_vec_local[1], target_vec_local[0])
+        target_theta_local = np.arctan2(
+            target_vec_local[1], target_vec_local[0])
 
         target_vec_further = [target_loc_further[0] - self.robots[idx_robot].loc[0],
                               target_loc_further[1] - self.robots[idx_robot].loc[1]]
-        target_theta_further = np.arctan2(target_vec_further[1], target_vec_local[0])
+        target_theta_further = np.arctan2(
+            target_vec_further[1], target_vec_local[0])
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta_local = target_theta_local - robot_theta
-        delta_theta_local = (delta_theta_local + math.pi) % (2 * math.pi) - math.pi
+        delta_theta_local = (delta_theta_local +
+                             math.pi) % (2 * math.pi) - math.pi
 
         delta_theta_further = target_theta_further - robot_theta
-        delta_theta_further = (delta_theta_further + math.pi) % (2 * math.pi) - math.pi
+        delta_theta_further = (delta_theta_further +
+                               math.pi) % (2 * math.pi) - math.pi
 
         self.robots[idx_robot].rotate(delta_theta_local * k_r)
         if abs(delta_theta_local) > math.pi / 4:
@@ -174,12 +180,14 @@ class Controller:
         max_radio = 0  # 记录最优性价比
         for idx_workbench_to_buy in robot.target_workbench_list:
             workbench_buy = self.workbenchs[idx_workbench_to_buy]
-            if workbench_buy.product_pro == 1:  # 被预定了,后序考虑优化
+            if workbench_buy.product_time == -1 and workbench_buy.product_status == 0 or workbench_buy.product_pro == 1:  # 被预定了,后序考虑优化
                 continue
-            frame_wait_buy = workbench_buy.product_time if workbench_buy.product_status == 0 else 0  # 生产所需时间，如果已有商品则为0
+            # 生产所需时间，如果已有商品则为0
+            frame_wait_buy = workbench_buy.product_time if workbench_buy.product_status == 0 else 0
             # if frame_wait_buy > self.MAX_WAIT: 由于移动时间更长了，所以直接生产等待时间比较不合理
             #     continue
-            frame_move_to_buy = len(self.m_map.get_path(robot.loc, idx_workbench_to_buy)) * self.MOVE_SPEED
+            frame_move_to_buy = len(self.m_map.get_path(
+                robot.loc, idx_workbench_to_buy)) * self.MOVE_SPEED
             if frame_wait_buy - frame_move_to_buy > self.MAX_WAIT:  # 等待时间超出移动时间的部分才有效
                 continue
             # 需要这个产品的工作台
@@ -202,9 +210,10 @@ class Controller:
                         frame_wait_sell = workbench_sell.product_time
                 # frame_move_to_buy, frame_move_to_sell= self.get_time_rww(idx_robot, idx_workstand, idx_worksand_to_sell)
                 frame_move_to_sell = len(self.m_map.get_path(workbench_buy.loc, idx_workbench_to_sell,
-                                                         True)) * self.MOVE_SPEED
+                                                             True)) * self.MOVE_SPEED
                 frame_buy = max(frame_move_to_buy, frame_wait_buy)  # 购买时间
-                frame_sell = max(frame_move_to_sell, frame_wait_sell - frame_buy)  # 出售时间
+                frame_sell = max(frame_move_to_sell,
+                                 frame_wait_sell - frame_buy)  # 出售时间
                 total_frame = frame_buy + frame_sell  # 总时间
                 if total_frame * self.CONSERVATIVE + frame_id > self.TOTAL_FRAME:  # 完成这套动作就超时了
                     continue
@@ -213,8 +222,8 @@ class Controller:
                 # sell_weight = self.SELL_WEIGHT**workbench_sell.get_materials_num # 已经占用的格子越多优先级越高
                 sell_weight = self.SELL_WEIGHT if workbench_sell.material else 1  # 已经占用格子的优先级越高
                 sell_debuff = self.SELL_DEBUFF if workbench_sell.typeID == 9 and workbench_sell.typeID != 7 else 1
-                radio = (
-                                workbench_buy.sell_price * time_rate - workbench_buy.buy_price) / total_frame * sell_weight * sell_debuff
+                radio = (workbench_buy.sell_price * time_rate -
+                         workbench_buy.buy_price) / total_frame * sell_weight * sell_debuff
                 if radio > max_radio:
                     max_radio = radio
                     robot.set_plan(idx_workbench_to_buy, idx_workbench_to_sell)
@@ -223,10 +232,12 @@ class Controller:
             idx_workbench_to_buy = robot.get_buy()
             idx_workbench_to_sell = robot.get_sell()
             robot.target = idx_workbench_to_buy
-            robot.path = np.array(self.m_map.get_float_path(robot.loc, idx_workbench_to_buy))
+            robot.path = np.array(self.m_map.get_float_path(
+                robot.loc, idx_workbench_to_buy))
             # 预定工作台
             self.workbenchs[idx_workbench_to_buy].pro_buy()
-            self.workbenchs[idx_workbench_to_sell].pro_sell(self.workbenchs[idx_workbench_to_buy].typeID)
+            self.workbenchs[idx_workbench_to_sell].pro_sell(
+                self.workbenchs[idx_workbench_to_buy].typeID)
             return True
         return False
 
@@ -266,19 +277,19 @@ class Controller:
                         idx_workbench_to_sell = robot.get_sell()
                         robot.target = idx_workbench_to_sell  # 更新目标到卖出地点
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 切换为 【出售途中】
-                        robot.path = self.m_map.get_float_path(robot.loc, idx_workbench_to_sell, True)
+                        robot.path = self.m_map.get_float_path(
+                            robot.loc, idx_workbench_to_sell, True)
                         continue
                     else:
                         robot.status = Robot.MOVE_TO_BUY_STATUS
-                        robot.path = self.m_map.get_float_path(robot.loc, robot.get_buy())
+                        robot.path = self.m_map.get_float_path(
+                            robot.loc, robot.get_buy())
                         continue
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
                 # 移动
                 self.move(idx_robot)
                 # 判断距离是否够近
-            
-                # self.move2loc_new(idx_robot)
 
                 # 判定是否进入交互范围
                 if robot.workbench_ID == robot.target:
@@ -305,7 +316,8 @@ class Controller:
                         # logging.debug(f"{idx_robot}->wait")
                     else:
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 购买失败说明位置不对，切换为 【出售途中】
-                        robot.path = self.m_map.get_float_path(robot.loc, idx_workbench_to_sell, True)
+                        robot.path = self.m_map.get_float_path(
+                            robot.loc, idx_workbench_to_sell, True)
                     continue
             idx_robot += 1
         for idx_robot in sell_out_list:
