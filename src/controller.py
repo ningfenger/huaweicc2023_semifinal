@@ -245,6 +245,8 @@ class Controller:
             elif robot_status == Robot.MOVE_TO_BUY_STATUS:
                 # 【购买途中】
                 self.move(idx_robot)
+                # 判断距离是否够近
+
                 # 判定是否进入交互范围
                 if robot.workbench_ID == robot.target:
                     # 记录任务分配时的时间 距离 角度相差
@@ -256,7 +258,7 @@ class Controller:
                 product_status = self.workbenchs[idx_workbench_to_buy].product_status
                 # self.pre_rotate(idx_robot, next_walkstand)
                 # 如果在等待，提前转向
-                if product_status == 1:  # 这里判定是否生产完成可以购买 不是真的1
+                if product_status == 1:  # 这里判定是否生产完成可以购买
                     # 可以购买
                     if robot.buy():  # 防止购买失败
                         # 取消预售
@@ -264,7 +266,7 @@ class Controller:
                         idx_workbench_to_sell = robot.get_sell()
                         robot.target = idx_workbench_to_sell  # 更新目标到卖出地点
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 切换为 【出售途中】
-                        robot.path = self.m_map.get_float_path(robot.loc, robot.get_sell(), True)
+                        robot.path = self.m_map.get_float_path(robot.loc, idx_workbench_to_sell, True)
                         continue
                     else:
                         robot.status = Robot.MOVE_TO_BUY_STATUS
@@ -273,8 +275,9 @@ class Controller:
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
                 # 移动
+                self.move(idx_robot)
                 # 判断距离是否够近
-
+            
                 # self.move2loc_new(idx_robot)
 
                 # 判定是否进入交互范围
@@ -302,7 +305,7 @@ class Controller:
                         # logging.debug(f"{idx_robot}->wait")
                     else:
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 购买失败说明位置不对，切换为 【出售途中】
-                        robot.path = self.m_map.get_float_path(robot.loc, robot.get_sell(), True)
+                        robot.path = self.m_map.get_float_path(robot.loc, idx_workbench_to_sell, True)
                     continue
             idx_robot += 1
         for idx_robot in sell_out_list:
