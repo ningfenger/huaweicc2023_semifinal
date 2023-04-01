@@ -125,8 +125,8 @@ class Robot:
         robot_pos = np.array(list(self.loc))
         dists = np.sqrt(np.sum((self.path - robot_pos) ** 2, axis=1))
         nearest_row = np.argmin(dists)
-        row1 = min(nearest_row + 1, len(self.path))
-        row2 = min(nearest_row + 2, len(self.path))
+        row1 = min(nearest_row + 1, len(self.path) - 1)
+        row2 = min(nearest_row + 2, len(self.path) - 1)
         if nearest_row == 0:
 
             rowb1 = min(nearest_row + 1, len(self.path))
@@ -135,10 +135,10 @@ class Robot:
             rowb1 = nearest_row
             rowb2 = nearest_row - 1
         target1 = self.path[row1, :]
-        # target2 = self.path[row2, :]
+        target2 = self.path[row2, :]
         # targetb1 = self.path[rowb1, :]
         # targetb2 = self.path[rowb2, :]
-        return target1
+        return target1, target2
         # return line_ray_intersection2(target1, target2, targetb1, targetb2)
         # return line_ray_intersection(target1, target2, self.loc, self.toward)
 

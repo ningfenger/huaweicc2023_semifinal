@@ -20,6 +20,14 @@ class PqItem:
             return self.point < other.point
         return self.cost < other.cost
 
+
+def cor2rc(x, y):
+    # 坐标返回在哪个格子
+    raw = 99 - int(y // 0.5)
+    col = int(x // 0.5)
+    return raw, col
+
+
 class PriorityQueue:
     def __init__(self):
         self.data = []
