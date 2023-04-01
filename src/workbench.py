@@ -31,6 +31,17 @@ class Workbench:
         self.material_pro = 0  # 原料格预定状态, 防止有多个机器人将其作为出售目标
         self.product_pro = 0  # 防止有多个机器人将其作为购买目标
         self.target_workbench_list = []  # 收购此工作台的产品且可到达的工作台列表
+        self.buy_price = self.ITEMS_BUY[self.typeID] if self.typeID < len(self.ITEMS_BUY) else 0  # 进价  
+        self.sell_price = self.ITEMS_SELL[self.typeID] if self.typeID < len(self.ITEMS_SELL) else 0  # 售价
+            
+
+    def get_materials_num(self):  # 返回格子数目
+        num = 0
+        v = self.material
+        while v:
+            num += v & 1
+            v >>= 1
+        return num
 
     def check_materials_full(self) -> bool:
         '''
@@ -61,7 +72,7 @@ class Workbench:
         sell: True表示预售, False表示取消预售
         设置成功返回True
         '''
-        if self.tpye in [8, 9]:
+        if self.typeID in [8, 9]:
             return True
         if sell:
             if self.check_material_pro(mateial_ID):
@@ -90,5 +101,4 @@ class Workbench:
 
     def update(self, s: str):
         # 根据判题器传来的状态修订本机状态
-        self.product_time, self.material, self.product_status = map(int, s.split()[
-                                                                    3:])
+        self.product_time, self.material, self.product_status = map(int, s.split()[3:])

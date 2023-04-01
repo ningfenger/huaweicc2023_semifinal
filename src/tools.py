@@ -1,7 +1,81 @@
 # coding=utf-8
 import heapq
 import math
+import numpy as np
 import time
+
+
+def line_ray_intersection(target1, target2, loc, theta):
+    dircos_robot = [math.cos(theta), math.sin(theta)]
+
+    vex_1to2 = target2 - target1
+
+    length_1to2 = np.sqrt(np.sum(np.power(vex_1to2, 2)))
+
+    dircos_1to2 = vex_1to2 / length_1to2
+
+    A = np.array([[dircos_robot[0], -dircos_1to2[0]], [dircos_robot[1], -dircos_1to2[1]]])
+    B = np.array([[target1[0] - loc[0]], [target1[1] - loc[1]]])
+
+    # 使用克莱姆法则求解线性方程组
+    detA = np.linalg.det(A)
+    if detA != 0:
+        # 如果系数矩阵的行列式不为0，则有唯一解
+        t = np.zeros_like(B)
+        for i in range(2):
+            Ai = A.copy()
+            # time.sleep(20)
+            Ai[:, i] = B[:, 0]
+            detAi = np.linalg.det(Ai)
+            t[i] = detAi / detA
+
+        if t[0] > 0 and t[0] < 1 and t[1] < 0:
+            target_loc = [loc[0] + dircos_robot[0] * (t[0] + 1), loc[1] + dircos_robot[1] * (t[0] + 1)]
+        else:
+            target_loc = target1
+    else:
+        target_loc = target1
+    return target_loc
+
+
+def line_ray_intersection2(target1, target2, targetb1, targetb2):
+    m_len = 1.5
+    vex_b2tob1 = targetb1 - targetb2
+
+    length_b2tob1 = np.sqrt(np.sum(np.power(vex_b2tob1, 2)))
+
+    dircos_b2tob1 = vex_b2tob1 / length_b2tob1
+
+    vex_1to2 = target2 - target1
+
+    length_1to2 = np.sqrt(np.sum(np.power(vex_1to2, 2)))
+
+    dircos_1to2 = vex_1to2 / length_1to2
+
+    A = np.array([[dircos_b2tob1[0], -dircos_1to2[0]], [dircos_b2tob1[1], -dircos_1to2[1]]])
+    B = np.array([[target1[0] - targetb1[0]], [target1[1] - targetb1[1]]])
+
+    # 使用克莱姆法则求解线性方程组
+    detA = np.linalg.det(A)
+    if detA != 0:
+        # 如果系数矩阵的行列式不为0，则有唯一解
+        t = np.zeros_like(B)
+        for i in range(2):
+            Ai = A.copy()
+            # time.sleep(20)
+            Ai[:, i] = B[:, 0]
+            detAi = np.linalg.det(Ai)
+            t[i] = detAi / detA
+
+        if t[0] >= 0 and t[1] < 0:
+            target_loc = [targetb1[0] + dircos_b2tob1[0] * (t[0] + 1), targetb1[1] + dircos_b2tob1[1] * (t[0] + 1)]
+        else:
+            target_loc = target1
+    else:
+        target_loc = target1
+    return target_loc
+
+
 class PqItem:
     def __init__(self, cost, point):
         self.__cost = cost
@@ -57,7 +131,6 @@ class PriorityQueue:
 
 
 class AStar:
-
     direction = [(0, 1), (0, -1), (1, 0), (-1, 0), (1, 1),
                  (1, -1), (-1, -1), (-1, 1)]
 
@@ -105,7 +178,6 @@ class AStar:
             path_cor.append([point[1] * 0.5 + 0.25, (100 - point[0]) * 0.5 + 0.25])
         return path_cor
 
-
     def get_path(self, start, goal, robot_with_product):
         """
         计算从起点到终点的最短路径
@@ -129,19 +201,18 @@ class AStar:
             if current == goal:
                 break
             for next in self.get_neighbors(current):
-                new_cost = self.__cost_dict[current] + self.__cost(current,next)
+                new_cost = self.__cost_dict[current] + self.__cost(current, next)
                 if next not in self.__cost_dict or \
-                    new_cost < self.__cost_dict[next]:
+                        new_cost < self.__cost_dict[next]:
                     self.__cost_dict[next] = new_cost
                     self.__parent[next] = current
-                    pq.push(PqItem(self.__all_cost(next,goal),next))
+                    pq.push(PqItem(self.__all_cost(next, goal), next))
 
         path = self.get_actual_path(goal)
         for point in path:
             self.__map.map_gray[point[0]][point[1]] = self.__map.PATH
 
-
-    def get_actual_path(self,goal):
+    def get_actual_path(self, goal):
         """
         从self.parent反向计算出从start->goal需要通过的点
         :param goal:
@@ -208,7 +279,7 @@ class AStar:
     def get_neighbors(self, current):
         for dir in self.direction:
             gray_map = self.__get_gray_map()
-            next = (current[0] + dir[0],current[1] + dir[1])
+            next = (current[0] + dir[0], current[1] + dir[1])
             if next[0] >= len(gray_map[0]) or next[0] < 0 or \
                     next[1] >= len(gray_map) or next[1] < 0:
                 continue

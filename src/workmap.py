@@ -6,6 +6,7 @@ from workbench import Workbench
 from tools import *
 import numpy as np
 import time
+from functools import cache
 
 '''
 地图类，保存整张地图数据
@@ -42,6 +43,7 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
 
+    @cache
     def loc_int2float(self, i, j, rode=False):
         '''
         地图离散坐标转实际连续坐标
@@ -259,44 +261,45 @@ class Workmap:
         workbench_loc: 当前节点坐标
         broad_road: 是否只能走宽路
         '''
-        could_reach = set()  # 可到达的节点集合
+        reach = []  # 上一轮到达的节点集合
         if broad_road:
             target_map = self.sell_map[workbench_ID]
             low_value = self.BROAD_ROAD
         else:
             target_map = self.buy_map[workbench_ID]
             low_value = self.ROAD
-        loc_x, loc_y = workbench_loc
-        target_map[loc_x][loc_y] = workbench_loc
+        node_x, node_y = workbench_loc
+        target_map[node_x][node_y] = workbench_loc
+        # node_x/y 当前节点 next_x/y 将要加入的节点 last_x/y 当前节点的父节点
         for x, y in self.TURNS:
-            next_x, next_y = loc_x + x, loc_y + y
+            next_x, next_y = node_x + x, node_y + y
             if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
                 continue
-            could_reach.add((next_x, next_y))  # 将周围节点标记为可到达
-        while could_reach:
-            tmp_reach = set()  # 暂存新一轮可到达点
-            for node_x, node_y in could_reach:
-                aim_loc = None
-                min_angle_diff = 4  # 减少转弯
+            reach.append((next_x, next_y))  # 将周围节点标记为可到达
+            target_map[next_x][next_y] = (node_x, node_y)
+        while reach:
+            tmp_reach = {}  # 暂存新一轮可到达点, k可到达点坐标, v 角度差
+            for node_x, node_y in reach:
+                last_x, last_y = target_map[node_x][node_y]
                 for i, j in self.TURNS:
-                    test_x, test_y = node_x + i, node_y+j
-                    if test_x < 0 or test_y < 0 or test_x >= 100 or test_y >= 100 or not target_map[test_x][test_y]:
+                    next_x, next_y = node_x + i, node_y+j
+                    if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
                         continue
-                    last_x, last_y = target_map[test_x][test_y]
-                    angle_diff = abs(last_x+node_x-2*test_x) + \
-                        abs(last_y+node_y-2*test_y)
-                    if angle_diff < min_angle_diff:
-                        min_angle_diff = angle_diff
-                        aim_loc = (test_x, test_y)
-                    if angle_diff == 0:
-                        break
-                target_map[node_x][node_y] = aim_loc
-                for x, y in self.TURNS:
-                    next_x, next_y = node_x + x, node_y + y
-                    if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or target_map[next_x][next_y] or self.map_gray[next_x][next_y] < low_value:
-                        continue
-                    tmp_reach.add((next_x, next_y))  # 将周围节点标记为可到达
-            could_reach = tmp_reach
+                    if (next_x, next_y) not in tmp_reach:
+                        if target_map[next_x][next_y]:  # 已被访问过说明是已经添加到树中的节点
+                            continue
+                        else:
+                            angle_diff = abs(last_x+node_x-2*next_x) + \
+                                abs(last_y+node_y-2*next_y)
+                            tmp_reach[(next_x, next_y)] = angle_diff
+                            target_map[next_x][next_y] = (node_x, node_y)
+                    else:
+                        angle_diff = abs(last_x+node_x-2*next_x) + \
+                            abs(last_y+node_y-2*next_y)
+                        if angle_diff < tmp_reach[(next_x, next_y)]:
+                            tmp_reach[(next_x, next_y)] = angle_diff
+                            target_map[next_x][next_y] = (node_x, node_y)
+            reach = tmp_reach.keys()
 
     def gen_paths(self):
         '''

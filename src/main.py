@@ -30,6 +30,7 @@ if __name__ == '__main__':
             robots.append(Robot(len(robots), loc))
         else:
             workbenchs.append(Workbench(len(workbenchs), int(t), loc))
+    t1 = time.time()
     workmap.init_roads()
     for idx, r2w in enumerate(workmap.robot2workbench()):
         robots[idx].target_workbench_list = r2w
@@ -37,8 +38,11 @@ if __name__ == '__main__':
         workbenchs[idx].target_workbench_list = w2w 
     # 计算一下路径
     workmap.gen_paths()
+    print(time.time()-t1)
     r_idx = 1
-    path = workmap.get_float_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[3])
+    path = workmap.get_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[0])
+    workmap.draw_path(path)
+    path = workmap.get_float_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[0])
     # 测试路径，非正式决策路径
     robots[r_idx].path = np.array(path)
     robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
