@@ -16,12 +16,24 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50*60*5
     # 控制参数
+    MOVE_SPEED = 1 / 4.15 * 50*2 # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MAX_WAIT = 3.14 * 50  # 最大等待时间 
+    SELL_WEIGHT = 1.45  # 优先卖给格子被部分占用的
+    SELL_DEBUFF = 0.8  # 非 7 卖给89的惩罚
+    CONSERVATIVE = 1+1/MOVE_SPEED*4  # 保守程度 最后时刻要不要操作
 
     def __init__(self, robots: List[Robot], workbenchs: List[Workbench], m_map:Workmap):
         self.robots = robots
         self.workbenchs = workbenchs
         self.m_map = m_map
         self.m_map = np.array(m_map.map_gray)
+
+    def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
+        # 设置参数
+        self.MOVE_SPEED = move_speed  # 估算移动时间
+        self.MAX_WAIT = max_wait  # 最大等待时间
+        self.SELL_WEIGHT = sell_weight  # 优先卖给格子被部分占用的
+        self.SELL_DEBUFF = sell_debuff  # 将456卖给9的惩罚因子
 
     def path_opt(self, idx_robot):
         for point in self.robots[idx_robot].path:
@@ -47,12 +59,151 @@ class Controller:
         else:
             print("forward", idx_robot, 3)
         pass
+    def get_time_rate(self, frame_sell: float) -> float:
+        # 计算时间损失
+        if frame_sell >= 9000:
+            return 0.8
+        sqrt_num = math.sqrt(1 - (1 - frame_sell / 9000) ** 2)
+        return (1 - sqrt_num) * 0.2 + 0.8
+
+    def choise(self, frame_id: int, robot: Robot) -> bool:
+        # 进行一次决策
+        max_radio = 0  # 记录最优性价比
+        for idx_workbench_to_buy in robot.target_workbench_list:
+            workbench_buy = self.workbenchs[idx_workbench_to_buy]
+            if workbench_buy.product_pro == 1:  # 被预定了,后序考虑优化
+                continue
+            frame_wait_buy = workbench_buy.product_time if workbench_buy.product_status == 0 else 0  # 生产所需时间，如果已有商品则为0
+            # if frame_wait_buy > self.MAX_WAIT: 由于移动时间更长了，所以直接生产等待时间比较不合理
+            #     continue
+            frame_move_to_buy = len(self.m_map.get_path(robot.loc, idx_workbench_to_buy))*self.MOVE_SPEED
+            if frame_wait_buy - frame_move_to_buy > self.MAX_WAIT: # 等待时间超出移动时间的部分才有效
+                continue
+            # 需要这个产品的工作台
+            for idx_workbench_to_sell in workbench_buy.target_workbench_list:
+                workbench_sell = self.workbenchs[idx_workbench_to_sell]
+                if workbench_sell.check_material_pro(workbench_buy.typeID):
+                    continue
+                # 格子里有这个原料
+                # 判断是不是8或9 不是8或9 且这个原料格子已经被占用的情况, 生产完了并不一定能继续生产
+                frame_wait_sell = 0
+                if Workbench.WORKSTAND_OUT[workbench_buy.typeID] and  workbench_sell.check_material(workbench_buy.typeID):
+                    continue
+                    # 阻塞或者材料格没满
+                    if workbench_sell.product_time in [-1, 0] or not workbench_sell.check_materials_full():
+                        continue
+                    elif workbench_sell.product_status == 1:  # 到这里说明材料格和产品格都满了不会再消耗原料格了
+                        continue
+                    else:
+                        frame_wait_sell = workbench_sell.product_time
+                # frame_move_to_buy, frame_move_to_sell= self.get_time_rww(idx_robot, idx_workstand, idx_worksand_to_sell)
+                frame_move_to_sell = self.m_map.get_path(workbench_buy.loc, idx_workbench_to_sell, True) * self.MOVE_SPEED
+                frame_buy = max(frame_move_to_buy,  frame_wait_buy)  # 购买时间
+                frame_sell = max(frame_move_to_sell,  frame_wait_sell - frame_buy)  # 出售时间
+                total_frame = frame_buy + frame_sell  # 总时间
+                if total_frame*self.CONSERVATIVE + frame_id > self.TOTAL_FRAME:  # 完成这套动作就超时了
+                    continue
+                time_rate = self.get_time_rate(
+                    frame_move_to_sell)  # 时间损耗
+                # sell_weight = self.SELL_WEIGHT**workbench_sell.get_materials_num # 已经占用的格子越多优先级越高
+                sell_weight = self.SELL_WEIGHT if workbench_sell.material else 1 # 已经占用格子的优先级越高
+                sell_debuff = self.SELL_DEBUFF if workbench_sell.typeID == 9 and workbench_sell.typeID != 7 else 1
+                radio = (
+                    workbench_buy.sell_price * time_rate - workbench_buy.buy_price) / total_frame*sell_weight*sell_debuff
+                if radio > max_radio:
+                    max_radio = radio
+                    robot.set_plan(idx_workbench_to_buy, idx_workbench_to_sell)
+        if max_radio > 0:  # 开始执行计划
+            # 设置机器人移动目标
+            idx_workbench_to_buy = robot.get_buy()
+            idx_workbench_to_sell = robot.get_sell()
+            robot.target = idx_workbench_to_buy
+            # 预定工作台
+            self.workbenchs[idx_workbench_to_buy].pro_buy()
+            self.workbenchs[idx_workbench_to_sell].pro_sell(self.workbenchs[idx_workbench_to_buy].typeID)
+            return True
+        return False
 
     def control(self, frame_id: int, money: int):
-
         print(frame_id)
-        for i in range(4):
-            if self.robots[i].status == Robot.MOVE_TO_BUY_STATUS:
-                # 前往购买
-                self.move(i)
+        sell_out_list = []  # 等待处理预售的机器人列表
+        while idx_robot < 4:
+            robot = self.robots[idx_robot]
+            robot_status = robot.status
+            if robot_status == Robot.FREE_STATUS:
+                # 【空闲】执行调度策略
+                if self.choise(frame_id, robot):
+                    robot.status = Robot.MOVE_TO_BUY_STATUS
+                    # 这里要不要导个航
+                    continue
+            elif robot_status == Robot.MOVE_TO_BUY_STATUS:
+                # 【购买途中】
+                # self.move2loc_new(idx_robot)
+
+                # 判定是否进入交互范围
+                if 1:
+                # if self._robots.get_status(feature_workstand_id_r, idx_robot) == self._robots.get_status(
+                #         feature_target_r, idx_robot):
+                    # 记录任务分配时的时间 距离 角度相差
+                    robot.status = Robot.WAIT_TO_BUY_STATUS  # 切换为 【等待购买】
+                    continue
+            elif robot_status == Robot.WAIT_TO_BUY_STATUS:
+                # 【等待购买】
+                idx_workbench_to_buy = robot.get_buy()
+                product_status = self.workbenchs[idx_workbench_to_buy].product_status
+                # self.pre_rotate(idx_robot, next_walkstand)
+                # 如果在等待，提前转向
+                if product_status == 1:  # 这里判定是否生产完成可以购买 不是真的1
+                    # 可以购买
+                    if robot.buy():  # 防止购买失败
+                        # 取消预售
+                        self.workbenchs[idx_workbench_to_buy].pro_buy(False)
+                        idx_workbench_to_sell = robot.get_sell()
+                        robot.target = idx_workbench_to_sell   # 更新目标到卖出地点
+                        robot.status = Robot.MOVE_TO_SELL_STATUS  # 切换为 【出售途中】
+                        # 要不要重新导航之类
+                        continue
+                    else:
+                        robot.status = Robot.MOVE_TO_BUY_STATUS
+                        # 再导航?
+                        continue
+            elif robot_status == Robot.MOVE_TO_SELL_STATUS:
+                # 【出售途中】
+                # 移动
+                # 判断距离是否够近
+
+                # self.move2loc_new(idx_robot)
+
+                # 判定是否进入交互范围
+                if 1:
+                # if self._robots.get_status(feature_workstand_id_r, idx_robot) == self._robots.get_status(
+                #         feature_target_r, idx_robot):
+                    robot.status = Robot.WAIT_TO_SELL_STATUS  # 切换为 【等待出售】
+                    # logging.debug(f"{idx_robot}->ready to sell")
+                    # 记录任务分配时的时间 距离 角度相差
+                    # 记录任务分配时的时间 距离 角度相差
+                    continue
+
+            elif robot_status == Robot.WAIT_TO_SELL_STATUS:
+                # 【等待出售】
+                idx_workbench_to_sell = robot.get_sell()
+                workbench_sell = self.workbenchs[idx_workbench_to_sell]
+                # 如果在等待，提前转向
+                # raise Exception(F"{material},{material_type}")
+                # 这里判定是否生产完成可以出售 不是真的1
+                if not Workbench.WORKSTAND_OUT[workbench_sell.typeID] or not workbench_sell.check_material(robot.item_type):
+                    # 可以出售
+                    if robot.sell():  # 防止出售失败
+                        # 取消预定
+                        sell_out_list.append(idx_robot)
+                        robot.status = Robot.FREE_STATUS
+                        # logging.debug(f"{idx_robot}->wait")
+                    else:
+                        robot.status = Robot.MOVE_TO_SELL_STATUS # 购买失败说明位置不对，切换为 【出售途中】
+                    continue
+            idx_robot += 1
+        for idx_robot in sell_out_list:
+            robot = self.robots[idx_robot]
+            workbench_sell = self.workbenchs[robot.get_sell()]
+            workbench_sell.pro_sell(robot.item_type, False)
 
