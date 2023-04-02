@@ -73,7 +73,9 @@ class Workmap:
         '''
         获取某个点到某路径的最短距离
         '''
-        pass
+        dists = np.sqrt(np.sum((np.array(path) - np.array(loc))**2, axis=1))
+        nearest_row = np.argmin(dists)
+        return dists[nearest_row]
 
     def read_map(self):
         '''
@@ -122,7 +124,8 @@ class Workmap:
                     if self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
-                    if 0 < i < 99 and 0<j <99 and self.map_gray[i-1][j+1]!=self.BLOCK and self.map_gray[i+1][j-1]!=self.BLOCK: # 一个斜着的格子也过不去
+                    # 一个斜着的格子也过不去
+                    if 0 < i < 99 and 0 < j < 99 and self.map_gray[i-1][j+1] != self.BLOCK and self.map_gray[i+1][j-1] != self.BLOCK:
                         self.map_gray[i][j] = self.ROAD
 
     def robot2workbench(self):
@@ -353,7 +356,7 @@ class Workmap:
             low_value = self.ROAD
         node_x, node_y = self.loc_float2int(*wait_flaot_loc)
         tmp_blocks = {}  # 将其他机器人及其一圈看做临时障碍物
-        path_map = {(node_x, node_y):(node_x, node_y)}  # 记录路径
+        path_map = {(node_x, node_y): (node_x, node_y)}  # 记录路径
         for robot_x, robot_y in robots_loc:
             for x, y in self.TURNS+[(0, 0)]:
                 block_x, block_y = robot_x+x, robot_y+y
@@ -372,31 +375,33 @@ class Workmap:
                     continue
                 # 保存路径
                 path_map[(next_x, next_y)] = (node_x, node_y)
-                float_loc = self.loc_int2float(next_x, next_y, self.map_gray[next_x][next_y] == self.ROAD)
+                float_loc = self.loc_int2float(
+                    next_x, next_y, self.map_gray[next_x][next_y] == self.ROAD)
                 if self.dis_loc2path(float_loc, work_path) >= safe_dis:
                     aim_node = (next_x, next_y)
-                    dq=None  # 清空队列使外层循环退出
+                    dq = None  # 清空队列使外层循环退出
                     break
                 dq.appendleft((next_x, next_y))  # 新点放左边
         # 恢复map_gray
         for robot_x, robot_y in robots_loc:
             for x, y in self.TURNS+[(0, 0)]:
                 block_x, block_y = robot_x+x, robot_y+y
-                self.map_gray[block_x][block_y] = tmp_blocks[(block_x, block_y)]
+                self.map_gray[block_x][block_y] = tmp_blocks[(
+                    block_x, block_y)]
         if not aim_node:
             return []
-        path = [] # 重建路径, 这是个逆序的路径
+        path = []  # 重建路径, 这是个逆序的路径
         x, y = aim_node
         while 1:
             path.append((x, y))
-            if (x, y) == path_map[(x,y)]:
+            if (x, y) == path_map[(x, y)]:
                 break
-            x, y = path_map[(x,y)]
-        float_path = [] # 转成浮点
+            x, y = path_map[(x, y)]
+        float_path = []  # 转成浮点
         for i in range(1, len(path)+1):
-            float_path.append(self.loc_int2float(*path[-i], self.map_gray[x][y] == self.ROAD))
+            float_path.append(self.loc_int2float(
+                *path[-i], self.map_gray[x][y] == self.ROAD))
         return float_path
-
 
     def get_float_path(self, float_loc, workbench_ID, broad_road=False, key_point=False):
         '''

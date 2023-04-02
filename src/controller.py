@@ -344,7 +344,7 @@ class Controller:
         return False
 
     def control(self, frame_id: int, money: int):
-        self.detect_deadlock(frame_id)
+        # self.detect_deadlock(frame_id)
 
         print(frame_id)
         sell_out_list = []  # 等待处理预售的机器人列表
@@ -353,10 +353,10 @@ class Controller:
             robot = self.robots[idx_robot]
             robot_status = robot.status
             if robot_status == Robot.FREE_STATUS:
-                # 判断是否出现了因跳帧导致的出售失败
-                if robot.item_type != 0: 
-                    robot.status = Robot.MOVE_TO_SELL_STATUS
-                    continue
+                # 判断是否出现了因跳帧导致的出售失败, 不太对, 预售预购的处理
+                # if robot.item_type != 0: 
+                #     robot.status = Robot.MOVE_TO_SELL_STATUS
+                #     continue
                 # 【空闲】执行调度策略
                 if self.choise(frame_id, robot):
                     robot.status = Robot.MOVE_TO_BUY_STATUS
@@ -396,9 +396,9 @@ class Controller:
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
                 # 判断是否出现了因跳帧导致的购买失败
-                if robot.item_type == 0: 
-                    robot.status = Robot.MOVE_TO_BUY_STATUS
-                    continue
+                # if robot.item_type == 0: 
+                #     robot.status = Robot.MOVE_TO_BUY_STATUS
+                #     continue
                 # 移动
                 self.move(idx_robot)
                 # 判断距离是否够近
