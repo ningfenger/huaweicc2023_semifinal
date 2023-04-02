@@ -373,7 +373,7 @@ class Workmap:
                 path_map[(next_x, next_y)] = (node_x, node_y)
                 if self.dis_loc2path((next_x, next_y), work_path) >= safe_dis:
                     aim_node = (next_x, next_y)
-                    dq.clear()  # 清空队列使外层循环退出
+                    dq=None  # 清空队列使外层循环退出
                     break
                 dq.appendleft((next_x, next_y))  # 新点放左边
         # 恢复map_gray
