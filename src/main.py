@@ -40,6 +40,7 @@ if __name__ == '__main__':
         workbenchs[idx].target_workbench_list = w2w 
     # 计算一下路径
     workmap.gen_paths()
+    # workmap.draw_map()
     # print(time.time()-t1)
     # r_idx = 1
     # for target_workbench in robots[r_idx].target_workbench_list:

@@ -105,17 +105,28 @@ class Workmap:
         # 先算宽路
         for i in range(1, 99):
             for j in range(1, 99):
-                for x, y in itertools.product([-1, 0, 1], repeat=2):
+                for x, y in [(0,0), (1,0), (0,1), (0,-1), (-1,0)]:#itertools.product([-1, 0, 1], repeat=2):
                     if self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.BROAD_ROAD
+                    continue
+                # if '1'<=self.map_data[i][j]<='9': # 再给工作台一个机会
+                #     tmp_blocks = [] # 记录障碍物
+                #     for x, y in itertools.product([-1, 0, 1], repeat=2):
+                #         if self.map_gray[i + x][j + y] == self.BLOCK:
+                #             tmp_blocks.append((x,y))
+                #         if len(tmp_blocks) == 1:
+                #             self.map_gray[i][j] = self.BROAD_ROAD
+                #         elif len(tmp_blocks) == 2 and (tmp_blocks[0][0] == tmp_blocks[1][0] or tmp_blocks[0][1] == tmp_blocks[1][1]):
+                #                 self.map_gray[i][j] = self.BROAD_ROAD
+
         # 再算窄路
         for i in range(100):
             for j in range(100):
                 if self.map_gray[i][j] == self.BROAD_ROAD:
                     continue
-                if '1' <= self.map_data[i][j] <= '3':  # 工作台也被认为可达
+                if '1' <= self.map_data[i][j] <= '9':  # 工作台也被认为可达
                     self.map_gray[i][j] = self.ROAD
                     continue
                 for x, y in itertools.product([0, 1], repeat=2):
@@ -124,9 +135,10 @@ class Workmap:
                     if self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
+                    self.map_gray[i][j] = self.ROAD
                     # 一个斜着的格子也过不去
-                    if 0 < i < 99 and 0 < j < 99 and self.map_gray[i-1][j+1] != self.BLOCK and self.map_gray[i+1][j-1] != self.BLOCK:
-                        self.map_gray[i][j] = self.ROAD
+                    if (i == 0 or j == 99 or self.map_gray[i-1][j+1] == self.BLOCK) and (i == 99 or j == 0 or self.map_gray[i+1][j-1] == self.BLOCK):
+                        self.map_gray[i][j] = self.BLOCK
 
     def robot2workbench(self):
         '''
