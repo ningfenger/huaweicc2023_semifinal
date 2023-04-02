@@ -8,9 +8,9 @@ import numpy as np
 import time
 from functools import lru_cache
 
-import logging
+# import logging
 
-logging.basicConfig(filename='log.log', level=logging.DEBUG)
+# logging.basicConfig(filename='log.log', level=logging.DEBUG)
 
 '''
 地图类，保存整张地图数据
@@ -368,7 +368,7 @@ class Workmap:
                     tmp_x, tmp_y = next_x, next_y
                 idx += 1
             new_path.append(path[-1])
-            logging.info(f'Path: {path} new_path{new_path}')
+            # logging.info(f'Path: {path} new_path{new_path}')
             path = new_path
 
         for i in range(len(path)-1):
