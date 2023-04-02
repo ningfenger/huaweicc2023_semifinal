@@ -262,6 +262,10 @@ class Controller:
             robot = self.robots[idx_robot]
             robot_status = robot.status
             if robot_status == Robot.FREE_STATUS:
+                # 判断是否出现了因跳帧导致的出售失败
+                if robot.item_type != 0: 
+                    robot.status = Robot.MOVE_TO_SELL_STATUS
+                    continue
                 # 【空闲】执行调度策略
                 if self.choise(frame_id, robot):
                     robot.status = Robot.MOVE_TO_BUY_STATUS
@@ -300,9 +304,13 @@ class Controller:
                         continue
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
+                # 判断是否出现了因跳帧导致的购买失败
+                if robot.item_type == 0: 
+                    robot.status = Robot.MOVE_TO_BUY_STATUS
+                    continue
                 # 移动
                 self.move(idx_robot)
-                # 判断距离是否够近]
+                # 判断距离是否够近
 
                 # 判定是否进入交互范围
                 if robot.workbench_ID == robot.target:

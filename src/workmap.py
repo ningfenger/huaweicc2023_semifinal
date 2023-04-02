@@ -8,6 +8,10 @@ import numpy as np
 import time
 from functools import lru_cache
 
+import logging
+
+logging.basicConfig(filename='log.log', level=logging.DEBUG)
+
 '''
 地图类，保存整张地图数据
 概念解释：
@@ -130,7 +134,7 @@ class Workmap:
                 for x, y in self.TURNS:
                     n_x, n_y = i + x, j + y
                     if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][
-                        n_y] < self.ROAD:
+                            n_y] < self.ROAD:
                         continue
                     dq.append((n_x, n_y))
                     visited_loc[n_x][n_y] = True
@@ -165,7 +169,7 @@ class Workmap:
                     n_x, n_y = i + x, j + y
                     # 因为是卖的过程，必须是宽路
                     if n_x > 99 or n_y > 99 or n_x < 0 or n_y < 0 or visited_loc[n_x][n_y] or self.map_gray[n_x][
-                        n_y] != self.BROAD_ROAD:
+                            n_y] != self.BROAD_ROAD:
                         continue
                     dq.append((n_x, n_y))
                     visited_loc[n_x][n_y] = True
@@ -286,19 +290,19 @@ class Workmap:
                 for i, j in self.TURNS:
                     next_x, next_y = node_x + i, node_y + j
                     if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][
-                        next_y] < low_value:
+                            next_y] < low_value:
                         continue
                     if (next_x, next_y) not in tmp_reach:
                         if target_map[next_x][next_y]:  # 已被访问过说明是已经添加到树中的节点
                             continue
                         else:
                             angle_diff = abs(last_x + node_x - 2 * next_x) + \
-                                         abs(last_y + node_y - 2 * next_y)
+                                abs(last_y + node_y - 2 * next_y)
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
                     else:
                         angle_diff = abs(last_x + node_x - 2 * next_x) + \
-                                     abs(last_y + node_y - 2 * next_y)
+                            abs(last_y + node_y - 2 * next_y)
                         if angle_diff < tmp_reach[(next_x, next_y)]:
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
@@ -316,8 +320,9 @@ class Workmap:
             workbench_type = self.map_data[x][y]
             if '8' <= workbench_type <= '9':
                 flag1 = False  # 空手到8、9没有意义
-            elif '1' <= workbench_type <= '3':
-                flag2 = False  # 拿着东西到1、2、3没有意义
+            # 宽路先都算
+            # elif '1' <= workbench_type <= '3':
+            #     flag2 = False  # 拿着东西到1、2、3没有意义
             if flag1:
                 self.buy_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, False)
@@ -325,18 +330,67 @@ class Workmap:
                 self.sell_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, True)
 
-    def get_float_path(self, float_loc, workbench_ID, broad_road=False):
+    def get_avoid_path(self, flaot_loc, path, robots_loc, broad_road=False, safe_dis=1.1):
+        '''
+        为机器人规划一条避让路径
+        flaot_loc: 要避让的机器人坐标
+        path: 正常行驶的机器人路径
+        robots_loc: 其他机器人坐标
+        return: 返回路径, 为空说明无法避让
+        '''
+        node_x, node_y = self.loc_float2int(*flaot_loc)
+
+    def get_float_path(self, float_loc, workbench_ID, broad_road=False, key_point=False):
         '''
         获取浮点型的路径
-        参数同get_path
+        float_loc: 当前位置的浮点坐标
+        workbench_ID: 工作台ID
+        broad_road: 是否只能走宽路  
+        key_point: 关键点模式, 若指定为True则只返回路径上需要转弯的关键点
         返回路径(换算好的float点的集合)
         '''
-        path = self.get_path(float_loc, workbench_ID, broad_road)
+        if broad_road:
+            path = self.get_path(float_loc, workbench_ID, broad_road)
+        else:  # 如果不指定走宽路，则优先走宽路
+            path = self.get_better_path(float_loc, workbench_ID)
+        if not path:
+            return path
+        if key_point and len(path) > 2:
+            new_path = [path[0]]
+            # 记录之前两个点的差值
+            tmp_x, tmp_y = path[1][0] - path[0][0], path[1][1]-path[0][1]
+            idx = 2
+            while idx < len(path):
+                next_x, next_y = path[idx][0] - \
+                    path[idx-1][0], path[idx][1]-path[idx-1][1]
+                if next_x != tmp_x or next_y != tmp_y:  # 变向了说明在前一个点处拐弯
+                    new_path.append(path[idx-1])
+                    tmp_x, tmp_y = next_x, next_y
+                idx += 1
+            new_path.append(path[-1])
+            logging.info(f'Path: {path} new_path{new_path}')
+            path = new_path
+
         for i in range(len(path)-1):
             x, y = path[i]
-            path[i] = self.loc_int2float(x, y, self.map_gray[x][y] == self.ROAD)
-        path[-1] = self.loc_int2float(*path[-1]) 
+            path[i] = self.loc_int2float(
+                x, y, self.map_gray[x][y] == self.ROAD)
+        path[-1] = self.loc_int2float(*path[-1])
         return path
+
+    def get_better_path(self, float_loc, workbench_ID, threshold=15):
+        '''
+        同时计算宽路和窄路，如果宽路比窄路多走不了阈值, 就选宽路
+        threshold: 阈值，如果宽路窄路都有，宽路比窄路多走不了阈值时走宽路
+        '''
+        # 窄路
+        path1 = self.get_path(float_loc, workbench_ID)
+        # 宽路
+        path2 = self.get_path(float_loc, workbench_ID, True)
+        # 不存在宽路，或者宽路比窄路多走超过阈值则返回窄路
+        if not path2 or len(path2)-len(path1) > threshold:
+            return path1
+        return path2
 
     def get_path(self, float_loc, workbench_ID, broad_road=False):
         '''
