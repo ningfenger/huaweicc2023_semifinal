@@ -7,6 +7,7 @@ from tools import *
 import numpy as np
 import time
 from functools import lru_cache
+from collections import deque
 
 # import logging
 
@@ -67,6 +68,12 @@ class Workmap:
         i = round(100 - (y + 0.25) * 2)
         j = round((x - 0.25) * 2)
         return i, j
+
+    def dis_loc2path(self, loc, path):
+        '''
+        获取某个点到某路径的最短距离
+        '''
+        pass
 
     def read_map(self):
         '''
@@ -330,15 +337,64 @@ class Workmap:
                 self.sell_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, True)
 
-    def get_avoid_path(self, flaot_loc, path, robots_loc, broad_road=False, safe_dis=1.1):
+    def get_avoid_path(self, wait_flaot_loc, work_path, robots_loc, broad_road=False, safe_dis=1.1):
         '''
-        为机器人规划一条避让路径
-        flaot_loc: 要避让的机器人坐标
-        path: 正常行驶的机器人路径
+        为机器人规划一条避让路径, 注意此函数会临时修改map_gray如果后续有多线程优化，请修改此函数
+        wait_flaot_loc: 要避让的机器人坐标
+        work_path: 正常行驶的机器人路径
         robots_loc: 其他机器人坐标
+        broad_road: 是否只能走宽路, 根据机器人手中是否 持有物品确定
         return: 返回路径, 为空说明无法避让
         '''
-        node_x, node_y = self.loc_float2int(*flaot_loc)
+        if broad_road:
+            low_value = self.BROAD_ROAD
+        else:
+            low_value = self.ROAD
+        node_x, node_y = self.loc_float2int(*wait_flaot_loc)
+        tmp_blocks = {}  # 将其他机器人及其一圈看做临时障碍物
+        path_map = {(node_x, node_y):(node_x, node_y)}  # 记录路径
+        for robot_x, robot_y in robots_loc:
+            for x, y in self.TURNS+[(0, 0)]:
+                block_x, block_y = robot_x+x, robot_y+y
+                # 暂存原来的值，方便改回去
+                tmp_blocks[(block_x, block_y)
+                           ] = self.map_gray[block_x][block_y]
+                self.map_gray[block_x][block_y] = self.BLOCK
+        dq = deque([(node_x, node_y)])
+        aim_node = None  # 记录目标节点
+        # 开始找路 直接bfs找一下先看看效果
+        while dq:
+            node_x, node_y = dq.pop()
+            for x, y in self.TURNS:
+                next_x, next_y = node_x, node_y
+                if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
+                    continue
+                # 保存路径
+                path_map[(next_x, next_y)] = (node_x, node_y)
+                if self.dis_loc2path((next_x, next_y), work_path) >= safe_dis:
+                    aim_node = (next_x, next_y)
+                    dq.clear()  # 清空队列使外层循环退出
+                    break
+                dq.appendleft((next_x, next_y))  # 新点放左边
+        # 恢复map_gray
+        for robot_x, robot_y in robots_loc:
+            for x, y in self.TURNS+[(0, 0)]:
+                block_x, block_y = robot_x+x, robot_y+y
+                self.map_gray[block_x][block_y] = tmp_blocks[(block_x, block_y)]
+        if not aim_node:
+            return []
+        path = [] # 重建路径, 这是个逆序的路径
+        x, y = aim_node
+        while 1:
+            path.append((x, y))
+            if (x, y) == path_map[(x,y)]:
+                break
+            x, y = path_map[(x,y)]
+        float_path = [] # 转成浮点
+        for i in range(1, len(path)+1):
+            float_path.append(self.loc_int2float(*path[-i], self.map_gray[x][y] == self.ROAD))
+        return float_path
+
 
     def get_float_path(self, float_loc, workbench_ID, broad_road=False, key_point=False):
         '''
