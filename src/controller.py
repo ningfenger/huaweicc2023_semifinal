@@ -24,13 +24,14 @@ class Controller:
     SELL_DEBUFF = 0.8  # 非 7 卖给89的惩罚
     CONSERVATIVE = 1 + 1 / MOVE_SPEED * 4  # 保守程度 最后时刻要不要操作
 
-    FRAME_DIFF_TO_DETECT_DEADLOCK = 30  # 单位为帧
+    FRAME_DIFF_TO_DETECT_DEADLOCK = 30  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
+    FRAME_DIFF = 25  # 单位为帧
     MIN_DIS_TO_DETECT_DEADLOCK = 0.1  # 如果机器人在一个时间段内移动的距离小于这个值,需要进行检测
 
     # 判断两个机器人是否死锁的距离阈值,单位为米
-    MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_N_N = 0.85  # 两个机器人都未装载物品
-    MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_N_Y = 1  # 一个机器人装载物品,一个未装
-    MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_Y_Y = 1.15  # 两个机器人都装载物品
+    MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_N_N = 0.92  # 两个机器人都未装载物品
+    MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_N_Y = 1.01  # 一个机器人装载物品,一个未装
+    MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_Y_Y = 1.1  # 两个机器人都装载物品
 
     def __init__(self, robots: List[Robot], workbenchs: List[Workbench], m_map: Workmap):
         self.robots = robots
@@ -51,22 +52,29 @@ class Controller:
         把该机器人设为不死锁状态
         @param: frame: 当前的帧数
         """
-        need_update = False
         for robot in self.robots:
+            # if robot.pre_frame == -1:
+            #     robot.pre_frame = frame
+            #     robot.pre_position = copy.deepcopy(robot.loc_np)
+            #     continue
+            distance = np.sqrt(
+                np.sum(np.square(robot.loc_np - robot.pre_position)))
+            
+            # 一帧内移动距离大于MIN_DIS_TO_DETECT_DEADLOCK，说明没有死锁，update
+            
+            if distance > self.MIN_DIS_TO_DETECT_DEADLOCK:
+                robot.update_frame_pisition(frame)
+                robot.is_deadlock = False
+                continue
+
             if robot.is_deadlock:
+                robot.update_frame_pisition(frame)
                 continue
-            if robot.pre_frame == -1:
-                robot.pre_frame = frame
-                robot.pre_position = copy.deepcopy(robot.loc_np)
-                continue
+
             if frame - robot.pre_frame < self.FRAME_DIFF_TO_DETECT_DEADLOCK:
                 continue
 
-            need_update = True
-            distance = np.sqrt(
-                np.sum(np.square(robot.loc_np - robot.pre_position)))
-            if distance > self.MIN_DIS_TO_DETECT_DEADLOCK:
-                continue
+            # 30帧内移动距离小于MIN_DIS_TO_DETECT_DEADLOCK
 
             for robot2 in self.robots:
                 if id(robot) == id(robot2):
@@ -77,10 +85,13 @@ class Controller:
                 if distance > self.MIN_DIS_TO_DETECT_DEADLOCK:
                     continue
 
+                if not robot2.is_deadlock and frame - robot2.pre_frame < self.FRAME_DIFF:
+                    continue
+
                 deadlock_dis_threshold = None
-                if robot.status == Robot.FREE_STATUS and robot2.status == Robot.FREE_STATUS:
+                if robot.status < Robot.MOVE_TO_SELL_STATUS and robot2.status < Robot.MOVE_TO_SELL_STATUS:
                     deadlock_dis_threshold = self.MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_N_N
-                elif robot.status != Robot.FREE_STATUS and robot2.status != Robot.FREE_STATUS:
+                elif robot.status >= Robot.MOVE_TO_SELL_STATUS and robot2.status >= Robot.MOVE_TO_SELL_STATUS:
                     deadlock_dis_threshold = self.MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_Y_Y
                 else:
                     deadlock_dis_threshold = self.MIN_DIS_TO_DETECT_DEADLOCK_BETWEEN_N_Y
@@ -91,17 +102,17 @@ class Controller:
                 if distance <= deadlock_dis_threshold:
                     robot2.is_deadlock = True
                     robot.is_deadlock = True
-                    sys.stderr.write("检测到死锁"+"."+str(robot.ID)+"\n")
-                    sys.stderr.write("检测到死锁"+"."+str(robot2.ID)+"\n")
+                    robot.update_frame_pisition(frame)
+                    robot2.update_frame_pisition(frame)
+                    sys.stderr.write("检测到死锁"+",robot_id:"+str(robot.ID)+"\n")
+                    sys.stderr.write("检测到死锁"+",robot_id:"+str(robot2.ID)+"\n")
                     sys.stderr.write("两个机器人距离为:"+str(distance)+"\n")
-                else:
-                    sys.stderr.write(str(robot.ID)+"可能是卡住了,也可能在等待\n")
 
-        if need_update:
-            for robot in self.robots:
-                if not robot.is_deadlock:
-                    robot.pre_frame = frame
-                    robot.pre_position = copy.deepcopy(robot.loc_np)
+        # if need_update:
+        #     for robot in self.robots:
+        #         if not robot.is_deadlock:
+        #             robot.pre_frame = frame
+        #             robot.pre_position = copy.deepcopy(robot.loc_np)
 
     def set_robot_state_undeadlock(self, robot_idx, frame):
         """
@@ -110,8 +121,7 @@ class Controller:
         @param: frame 当前的帧数
         """
         robot = self.robots[robot_idx]
-        robot.pre_frame = frame
-        robot.pre_position = copy.deepcopy(robot.loc_np)
+        robot.update_frame_pisition(frame)
         robot.is_deadlock = False
 
     def radar(self, idx_robot, d_theta):
@@ -246,7 +256,8 @@ class Controller:
         #         delta_theta_local -= math.pi * (safe_dis - dis_l) / 5
         #     if dis_r < safe_dis and far_flag:
         #         delta_theta_local += math.pi * (safe_dis - dis_l) / 5
-        delta_theta_local = (delta_theta_local + math.pi) % (2 * math.pi) - math.pi
+        delta_theta_local = (delta_theta_local +
+                             math.pi) % (2 * math.pi) - math.pi
         delta_theta_further = target_theta_further - robot_theta
         delta_theta_further = (delta_theta_further +
                                math.pi) % (2 * math.pi) - math.pi
@@ -411,7 +422,8 @@ class Controller:
                         # logging.debug(f"{idx_robot}->wait")
                     else:
                         robot.status = Robot.MOVE_TO_SELL_STATUS  # 购买失败说明位置不对，切换为 【出售途中】
-                        robot.set_path(self.m_map.get_float_path(robot.loc, idx_workbench_to_sell, True))
+                        robot.set_path(self.m_map.get_float_path(
+                            robot.loc, idx_workbench_to_sell, True))
                         continue
             idx_robot += 1
         for idx_robot in sell_out_list:

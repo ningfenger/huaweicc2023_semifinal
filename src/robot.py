@@ -34,11 +34,15 @@ class Robot:
         self.path = []
 
         # 关于检测机器人对眼死锁的成员变量
-        self.pre_position = None
-        self.pre_frame  = -1
+        self.pre_position = np.array(list(self.loc))
+        self.pre_frame  = -1 #记录上次一帧内移动距离大于min_dis
         self.is_deadlock = False  # True if the robot is in a deadlock state
         self.loc_np = np.array(list(self.loc))
 
+    def update_frame_pisition(self, frame):
+        self.pre_frame = frame
+        self.pre_position = np.array(list(self.loc))
+        
     def set_plan(self, buy_ID: int, sell_ID: int):
         '''
         设置机器人计划, 传入购买和出售工作台的ID
