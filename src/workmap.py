@@ -371,7 +371,8 @@ class Workmap:
                     continue
                 # 保存路径
                 path_map[(next_x, next_y)] = (node_x, node_y)
-                if self.dis_loc2path((next_x, next_y), work_path) >= safe_dis:
+                float_loc = self.loc_int2float(next_x, next_y, self.map_gray[next_x][next_y] == self.ROAD)
+                if self.dis_loc2path(float_loc, work_path) >= safe_dis:
                     aim_node = (next_x, next_y)
                     dq=None  # 清空队列使外层循环退出
                     break
