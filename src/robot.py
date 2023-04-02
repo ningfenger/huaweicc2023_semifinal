@@ -1,4 +1,5 @@
 # coding=utf-8
+import copy
 from typing import Optional, List, Tuple
 from tools import *
 '''
@@ -18,7 +19,7 @@ class Robot:
 
     def __init__(self, ID: int, loc: Tuple[int]):
         self.ID = ID
-        self.loc = loc
+        self.loc = copy.deepcopy(loc)
         self.workbench_ID = -1  # 所处工作台ID -1代表没有
         self.item_type = 0  # 携带物品类型
         self.time_value = 0.0  # 时间价值系数
@@ -32,6 +33,16 @@ class Robot:
         self.target_workbench_list = []  # 可到达的工作台列表
         self.path = []
 
+        # 关于检测机器人对眼死锁的成员变量
+        self.pre_position = np.array(list(self.loc))
+        self.pre_frame  = -1 #记录上次一帧内移动距离大于min_dis
+        self.is_deadlock = False  # True if the robot is in a deadlock state
+        self.loc_np = np.array(list(self.loc))
+
+    def update_frame_pisition(self, frame):
+        self.pre_frame = frame
+        self.pre_position = np.array(list(self.loc))
+        
     def set_plan(self, buy_ID: int, sell_ID: int):
         '''
         设置机器人计划, 传入购买和出售工作台的ID
@@ -57,7 +68,6 @@ class Robot:
         获取卖的目标
         '''
         return self.__plan[1]
-
 
 
     def find_temp_tar(self):
@@ -135,3 +145,4 @@ class Robot:
             float, s[2:])
         self.speed = (speed_x, speed_y)
         self.loc = (x, y)
+        self.loc_np = np.array(list(self.loc))
