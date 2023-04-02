@@ -122,7 +122,8 @@ class Workmap:
                     if self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
-                    self.map_gray[i][j] = self.ROAD
+                    if 0 < i < 99 and 0<j <99 and self.map_gray[i-1][j+1]!=self.BLOCK and self.map_gray[i+1][j-1]!=self.BLOCK: # 一个斜着的格子也过不去
+                        self.map_gray[i][j] = self.ROAD
 
     def robot2workbench(self):
         '''
