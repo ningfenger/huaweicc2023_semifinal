@@ -339,7 +339,7 @@ class Workmap:
 
     def get_avoid_path(self, wait_flaot_loc, work_path, robots_loc, broad_road=False, safe_dis=1.1):
         '''
-        为机器人规划一条避让路径, 注意此函数会临时修改map_gray如果后续有多线程优化，请修改此函数
+        为机器人规划一条避让路径, 注意此函数会临时修改map_gray如果后续有多线程优化, 请修改此函数
         wait_flaot_loc: 要避让的机器人坐标
         work_path: 正常行驶的机器人路径
         robots_loc: 其他机器人坐标
