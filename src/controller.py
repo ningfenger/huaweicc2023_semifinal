@@ -18,9 +18,9 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED = 1 / 4.15 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MOVE_SPEED = 1 / 2 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
     MAX_WAIT = 3.14 * 50  # 最大等待时间
-    SELL_WEIGHT = 1.45  # 优先卖给格子被部分占用的
+    SELL_WEIGHT = 1.5  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.8  # 非 7 卖给89的惩罚
     CONSERVATIVE = 1 + 1 / MOVE_SPEED * 4  # 保守程度 最后时刻要不要操作
 
@@ -59,9 +59,9 @@ class Controller:
             #     continue
             distance = np.sqrt(
                 np.sum(np.square(robot.loc_np - robot.pre_position)))
-            
+
             # 一帧内移动距离大于MIN_DIS_TO_DETECT_DEADLOCK，说明没有死锁，update
-            
+
             if distance > self.MIN_DIS_TO_DETECT_DEADLOCK:
                 robot.update_frame_pisition(frame)
                 robot.is_deadlock = False
@@ -344,6 +344,8 @@ class Controller:
         return False
 
     def control(self, frame_id: int, money: int):
+        # 在这里执行冲突检测和化解并记得记录上一个机器人的状态
+        # 如果冲突无法化解，让每个机器人都倒一下车
         # self.detect_deadlock(frame_id)
 
         print(frame_id)
@@ -354,7 +356,7 @@ class Controller:
             robot_status = robot.status
             if robot_status == Robot.FREE_STATUS:
                 # 判断是否出现了因跳帧导致的出售失败, 不太对, 预售预购的处理
-                # if robot.item_type != 0: 
+                # if robot.item_type != 0:
                 #     robot.status = Robot.MOVE_TO_SELL_STATUS
                 #     continue
                 # 【空闲】执行调度策略
@@ -393,10 +395,13 @@ class Controller:
                         robot.set_path(self.m_map.get_float_path(
                             robot.loc, robot.get_buy()))
                         continue
+                else:
+                    robot.forward(0)
+                    robot.rotate(0)
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
                 # 判断是否出现了因跳帧导致的购买失败
-                # if robot.item_type == 0: 
+                # if robot.item_type == 0:
                 #     robot.status = Robot.MOVE_TO_BUY_STATUS
                 #     continue
                 # 移动
@@ -433,6 +438,24 @@ class Controller:
                         robot.set_path(self.m_map.get_float_path(
                             robot.loc, idx_workbench_to_sell, True))
                         continue
+                else:
+                    robot.forward(0)
+                    robot.rotate(0)
+            elif robot_status == Robot.AVOID_CLASH:
+                # 距离足够近则取消冲突避免状态
+                if (robot.loc[0]-robot.path[-1][0])**2 + (robot.loc[1]-robot.path[-1][1])**2 < 0.01:
+                    if robot.last_status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
+                        # 重新规划路径
+                        robot.set_path(self.m_map.get_float_path(robot.loc, robot.get_buy()))
+                        robot.status = Robot.MOVE_TO_BUY_STATUS
+                    elif robot.last_status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
+                        robot.set_path(self.m_map.get_float_path(robot.loc, robot.get_sell()))
+                        robot.status = Robot.MOVE_TO_SELL_STATUS
+                    else:
+                        robot.status = robot.last_status
+                    continue
+                else:
+                    self.move(idx_robot)
             idx_robot += 1
         for idx_robot in sell_out_list:
             robot = self.robots[idx_robot]
