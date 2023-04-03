@@ -92,6 +92,15 @@ class Robot:
         # return line_ray_intersection2(target1, target2, targetb1, targetb2)
         # return line_ray_intersection(target1, target2, self.loc, self.toward)
 
+    def find_temp_tar_idx(self):
+        robot_pos = np.array(list(self.loc))
+        dists = np.sqrt(np.sum((self.path - robot_pos) ** 2, axis=1))
+        nearest_row = np.argmin(dists)
+        row1 = min(nearest_row + 1, len(self.path) - 1)
+
+        return row1
+
+
     # 四个动作
     def forward(self, speed: float):
         '''

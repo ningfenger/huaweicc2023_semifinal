@@ -213,7 +213,163 @@ class Controller:
         if idx_ob == -1:
             return 100
         else:
+            # 障碍物距离
             return np.sqrt((x_set_near[idx_ob] - point[0]) ** 2 + (y_set_near[idx_ob] - point[1]) ** 2)
+
+
+    def obt_detect(self, loc0, loc1):
+        # 位置0到位置1区间是否有障碍物
+
+        # loc0→loc1的距离
+        dis = np.sqrt(np.sum((loc1 - loc0) ** 2))
+
+        # loc0→loc1的方向
+        theta = np.arctan2(loc1[1] - loc0[1], loc1[0] - loc0[0])
+
+        # loc0所处的格子
+
+        raw, col = int(loc0[1] // 0.5), int(loc0[0] // 0.5)
+
+        max_num = np.ceil(dis)
+        # 取出所有边界点
+        if theta == 0:
+            # 正右
+            x_set_all = np.arange(col + 1, min(col + max_num + 1, 101), 1) * 0.5
+            y_set_all = np.ones_like(x_set_all) * loc0[1]
+        elif theta == math.pi / 2:
+            # 正上
+            y_set_all = np.arange(raw + 1, min(raw + max_num + 1, 101), 1) * 0.5
+            x_set_all = np.ones_like(y_set_all) * loc0[0]
+        elif theta == math.pi:
+            # 正左
+            x_set_all = np.arange(col, max(col - max_num - 1, -1), -1) * 0.5
+            y_set_all = np.ones_like(x_set_all) * loc0[1]
+        elif theta == -math.pi / 2:
+            # 正下
+            y_set_all = np.arange(raw, max(raw - max_num - 1, -1), -1) * 0.5
+            x_set_all = np.ones_like(y_set_all) * loc0[0]
+        else:
+            # 其他方向
+
+            # x方向栅格点集
+            if -math.pi / 2 < theta < math.pi / 2:
+                # 1 4 象限
+                x_set_xgrid = np.arange(col + 1, min(col + max_num + 1, 101), 1) * 0.5
+            else:
+                # 2 3 象限
+                x_set_xgrid = np.arange(col, max(col - max_num - 1, -1), -1) * 0.5
+            y_set_xgrid = np.tan(theta) * (x_set_xgrid - loc0[0]) + loc0[1]
+
+            # y方向栅格点集
+            if 0 < theta < math.pi:
+                # 1 2 象限
+                y_set_ygrid = np.arange(raw + 1, min(raw + max_num + 1, 101), 1) * 0.5
+
+            else:
+                # 3 4 象限
+                y_set_ygrid = np.arange(raw, max(raw - max_num - 1, -1), -1) * 0.5
+            x_set_ygrid = 1 / np.tan(theta) * \
+                (y_set_ygrid - loc0[1]) + loc0[0]
+            x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
+            y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
+
+            # 得到排序后的索引
+            idx = np.argsort(y_set_all)
+            # 将坐标按照排序后的索引进行排序
+            if theta < 0:
+                x_set_all = x_set_all[idx]
+                y_set_all = y_set_all[idx]
+            else:
+                x_set_all = x_set_all[idx[::-1]]
+                y_set_all = y_set_all[idx[::-1]]
+
+        # 取出所有边界点↑
+        x_set_near = x_set_all[:-1]
+        x_set_far = x_set_all[1:]
+
+        y_set_near = y_set_all[:-1]
+        y_set_far = y_set_all[1:]
+
+        x_set_mid = (x_set_near + x_set_far) / 2
+        y_set_mid = (y_set_near + y_set_far) / 2
+
+        dis_set = np.sqrt((x_set_near - loc0[0]) ** 2 + (y_set_near - loc0[1]) ** 2)
+        mask = np.zeros_like(x_set_mid, dtype=bool)
+        mask[dis_set <= dis] = True
+        x_set_mid = x_set_mid[mask]
+        y_set_mid = y_set_mid[mask]
+        idx_ob = -1
+        for i_point in range(len(x_set_mid)):
+            x = x_set_mid[i_point]
+            y = y_set_mid[i_point]
+            raw, col = tools.cor2rc(x, y)
+
+            if self.m_map_arr[raw, col] == 0:
+                # 障碍物
+                idx_ob = i_point
+                break
+
+        if idx_ob == -1:
+            # 全程无障碍
+            return True
+        else:
+            # 出现障碍
+            return False
+
+    def select_target(self, idx_robot):
+        robot = self.robots[idx_robot]
+        robot_loc_m = np.array(robot.loc).copy()
+        path_loc_m = robot.path.copy()
+        width = 0.3
+
+        # robot_loc_m 指向各个点的方向
+        theta_set = np.arctan2(path_loc_m[:, 1] - robot_loc_m[1], path_loc_m[:, 0] - robot_loc_m[0]).reshape(-1, 1)
+
+        # 方向左旋90度
+        theta_l_set = theta_set + math.pi / 2
+
+        # 方向右旋90度
+        theta_r_set = theta_set - math.pi / 2
+
+        robot_loc_l = robot_loc_m + width * np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
+        robot_loc_r = robot_loc_m + width * np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
+
+        path_loc_l = path_loc_m + width * np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
+        path_loc_r = path_loc_m + width * np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
+        len_path = path_loc_m.shape[0]
+        detect_m = np.full(len_path, False)
+        detect_l = np.full(len_path, False)
+        detect_r = np.full(len_path, False)
+        for idx_point in range(len_path):
+            loc0 = robot_loc_m
+            loc1 = path_loc_m[idx_point, :]
+            detect_m[idx_point] = self.obt_detect(loc0, loc1)
+
+            loc0 = robot_loc_l[idx_point, :]
+            loc1 = path_loc_l[idx_point, :]
+            detect_l[idx_point] = self.obt_detect(loc0, loc1)
+
+            loc0 = robot_loc_r[idx_point, :]
+            loc1 = path_loc_r[idx_point, :]
+            detect_r[idx_point] = self.obt_detect(loc0, loc1)
+
+        detect_all = detect_r & detect_l & detect_m
+
+
+        if detect_all.any():
+            m_index = np.where(detect_all)
+            idx_target = m_index[0][len(m_index[0]) - 1]
+        # elif detect_m.any():
+        #     m_index = np.where(detect_m)
+        #     idx_target = m_index[0][len(m_index[0]) - 1]
+        else:
+            idx_target = robot.find_temp_tar_idx()
+
+        return path_loc_m[idx_target, :]
+
+
+
+
 
     def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
         # 设置参数
@@ -227,8 +383,47 @@ class Controller:
             row, col = 100 - int(point[1] * 2 - 0.5), int(point[0] * 2 - 0.5)
             a = 100000
 
+
     def move(self, idx_robot):
         # 机器人沿着指定路线移动
+        self.select_target(idx_robot)
+        k_r = 8
+        dis_l = self.radar(idx_robot, math.pi / 3)
+        dis_r = self.radar(idx_robot, -math.pi / 3)
+        far_flag = False
+        if self.dis2target(idx_robot) > 2:
+            far_flag = True
+        target_loc = self.select_target(idx_robot)
+
+        target_vec = [target_loc[0] - self.robots[idx_robot].loc[0],
+                            target_loc[1] - self.robots[idx_robot].loc[1]]
+        target_theta = np.arctan2(
+            target_vec[1], target_vec[0])
+        dis_target = np.sqrt(np.dot(target_vec, target_vec))
+
+        robot_theta = self.robots[idx_robot].toward
+        delta_theta = target_theta - robot_theta
+        # safe_dis = 1.2
+        # if abs(delta_theta_local) < math.pi / 6:
+        #     if dis_l < safe_dis and far_flag:
+        #         delta_theta_local -= math.pi * (safe_dis - dis_l) / 5
+        #     if dis_r < safe_dis and far_flag:
+        #         delta_theta_local += math.pi * (safe_dis - dis_l) / 5
+        delta_theta = (delta_theta +
+                             math.pi) % (2 * math.pi) - math.pi
+
+
+        self.robots[idx_robot].rotate(delta_theta * k_r)
+        if abs(delta_theta) > math.pi / 6:
+            print("forward", idx_robot, 0)
+        else:
+            print("forward", idx_robot, dis_target * 5)
+        pass
+
+
+    def move_bck(self, idx_robot):
+        # 机器人沿着指定路线移动
+        self.select_target(idx_robot)
         k_r = 8
         dis_l = self.radar(idx_robot, math.pi / 3)
         dis_r = self.radar(idx_robot, -math.pi / 3)
