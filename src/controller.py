@@ -230,7 +230,7 @@ class Controller:
 
         raw, col = int(loc0[1] // 0.5), int(loc0[0] // 0.5)
 
-        max_num = np.ceil(dis)
+        max_num = np.ceil(dis / 0.5)
         # 取出所有边界点
         if theta == 0:
             # 正右
@@ -308,7 +308,11 @@ class Controller:
                 # 障碍物
                 idx_ob = i_point
                 break
+        #################
+        if loc1[0] == 46.25 and loc1[1] == 40.75:
+            a = 10000000000000000000000000000
 
+        #################
         if idx_ob == -1:
             # 全程无障碍
             return True
@@ -320,6 +324,10 @@ class Controller:
         robot = self.robots[idx_robot]
         robot_loc_m = np.array(robot.loc).copy()
         path_loc_m = robot.path.copy()
+
+        vec_r2p = robot_loc_m - path_loc_m
+        dis_r2p = np.sqrt(np.sum(vec_r2p ** 2, axis=1))
+        path_loc_m = path_loc_m[dis_r2p < 8]
         width = 0.3
 
         # robot_loc_m 指向各个点的方向
@@ -359,9 +367,9 @@ class Controller:
         if detect_all.any():
             m_index = np.where(detect_all)
             idx_target = m_index[0][len(m_index[0]) - 1]
-        # elif detect_m.any():
-        #     m_index = np.where(detect_m)
-        #     idx_target = m_index[0][len(m_index[0]) - 1]
+        elif detect_m.any():
+            m_index = np.where(detect_m)
+            idx_target = m_index[0][len(m_index[0]) - 1]
         else:
             idx_target = robot.find_temp_tar_idx()
 
@@ -384,17 +392,44 @@ class Controller:
             a = 100000
 
 
+    def get_other_col_info(self, idx_robot, idx_other):
+        robot_this = self.robots[idx_robot]
+        robot_other = self.robots[idx_other]
+        vx_robot = robot_this.speed[0]
+        vy_robot = robot_this.speed[1]
+        x_robot = robot_this.loc[0]
+        y_robot = robot_this.loc[1]
+
+        vx_other = robot_other.speed[0]
+        vy_other = robot_other.speed[1]
+        x_other = robot_other.loc[0]
+        y_other = robot_other.loc[1]
+
+        # 判断是否路上正向对撞
+        col_flag, x_col, y_col, dist_robot, dist_other = tools.will_collide(x_robot, y_robot, vx_robot, vy_robot, x_other, y_other, vx_other, vy_other, 1.5)
+        # 判断是否路上侧向撞上其他机器人
+        # 判断是否同时到终点僵持
+        return col_flag, x_col, y_col, dist_robot, dist_other
+
+
     def move(self, idx_robot):
-        # 机器人沿着指定路线移动
-        self.select_target(idx_robot)
+
         k_r = 8
         dis_l = self.radar(idx_robot, math.pi / 3)
         dis_r = self.radar(idx_robot, -math.pi / 3)
         far_flag = False
         if self.dis2target(idx_robot) > 2:
             far_flag = True
-        target_loc = self.select_target(idx_robot)
-
+        if self.robots[idx_robot].temp_target is None:
+            target_loc = self.select_target(idx_robot)
+            self.robots[idx_robot].temp_target = target_loc
+        else:
+            dis_temp_target = np.sqrt(np.sum((self.robots[idx_robot].temp_target - np.array(self.robots[idx_robot].loc)) ** 2))
+            if dis_temp_target > 6:
+                target_loc = self.robots[idx_robot].temp_target
+            else:
+                target_loc = self.select_target(idx_robot)
+                self.robots[idx_robot].temp_target = target_loc
         target_vec = [target_loc[0] - self.robots[idx_robot].loc[0],
                             target_loc[1] - self.robots[idx_robot].loc[1]]
         target_theta = np.arctan2(
@@ -411,13 +446,23 @@ class Controller:
         #         delta_theta_local += math.pi * (safe_dis - dis_l) / 5
         delta_theta = (delta_theta +
                              math.pi) % (2 * math.pi) - math.pi
-
+        col_flag = False
+        for idx_other in range(4):
+            if not idx_other == idx_robot:
+                col_flag, x_col, y_col, dist_robot, dist_other = self.get_other_col_info(idx_robot, idx_other)
+                if col_flag:
+                    break
 
         self.robots[idx_robot].rotate(delta_theta * k_r)
-        if abs(delta_theta) > math.pi / 6:
+        if col_flag:
+            print("forward", idx_robot, -2)
+        elif abs(delta_theta) > math.pi / 6:
             print("forward", idx_robot, 0)
         else:
             print("forward", idx_robot, dis_target * 5)
+
+        if idx_robot == 1:
+            a = 10000000000000
         pass
 
 

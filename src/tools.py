@@ -5,6 +5,39 @@ import numpy as np
 import time
 
 
+def will_collide(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r = 0.53):
+    # 计算机器人之间的初始距离
+    dist = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    # 计算相对速度
+    rel_vx = vx1 - vx2
+    rel_vy = vy1 - vy2
+    # 如果机器人的相对速度为零，则它们永远不会相遇
+    if rel_vx == 0 and rel_vy == 0:
+        return (False, None, None, None, None)
+    # 计算参数方程
+    a = rel_vx**2 + rel_vy**2
+    b = 2 * ((x1 - x2) * rel_vx + (y1 - y2) * rel_vy)
+    c = (x1 - x2)**2 + (y1 - y2)**2 - 4 * r**2
+    delta = b**2 - 4 * a * c
+    # 如果delta小于零，则机器人之间不会相遇
+    if delta < 0:
+        return (False, None, None, None, None)
+    else:
+        t1 = (-b + math.sqrt(delta)) / (2 * a)
+        t2 = (-b - math.sqrt(delta)) / (2 * a)
+        t = min(t1, t2)
+        # 如果时间是负数或者超出了预测的时间范围，则机器人之间不会相遇
+        if t < 0 or t > t_max:
+            return (False, None, None, None, None)
+        # 计算碰撞点的位置
+        collision_x = (x1 + vx1 * t + x2 + vx2 * t) / 2
+        collision_y = (y1 + vy1 * t + y2 + vy2 * t) / 2
+        # 计算碰撞点距离各自的长度
+        distance1 = math.sqrt((collision_x - x1)**2 + (collision_y - y1)**2) - r
+        distance2 = math.sqrt((collision_x - x2)**2 + (collision_y - y2)**2) - r
+        return (True, collision_x, collision_y, distance1, distance2)
+
+
 def line_ray_intersection(target1, target2, loc, theta):
     dircos_robot = [math.cos(theta), math.sin(theta)]
 
@@ -284,3 +317,4 @@ class AStar:
                     next[1] >= len(gray_map) or next[1] < 0:
                 continue
             yield next
+

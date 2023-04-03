@@ -17,6 +17,7 @@ class Robot:
     MOVE_TO_SELL_STATUS = 3
     WAIT_TO_SELL_STATUS = 4
 
+
     def __init__(self, ID: int, loc: Tuple[int]):
         self.ID = ID
         self.loc = copy.deepcopy(loc)
@@ -28,6 +29,7 @@ class Robot:
         self.speed = (0.0, 0.0)  # 线速度
         self.toward = 0.0  # 朝向
         self.status: int = 0  # 0 空闲, 1 购买途中, 2 等待购买, 3 出售途中, 4 等待出售
+        self.move_status: int = 0 # 移动时的状态
         self.target = -1  # 当前机器人的目标控制台 -1代表无目标
         self.__plan = (-1, -1)  # 设定买和卖的目标工作台
         self.target_workbench_list = []  # 可到达的工作台列表
@@ -38,6 +40,9 @@ class Robot:
         self.pre_frame  = -1 #记录上次一帧内移动距离大于min_dis
         self.is_deadlock = False  # True if the robot is in a deadlock state
         self.loc_np = np.array(list(self.loc))
+
+        # 路径追踪的临时点
+        self.temp_target = None
 
     def update_frame_pisition(self, frame):
         self.pre_frame = frame
