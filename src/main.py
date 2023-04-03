@@ -1,5 +1,7 @@
 # coding=utf-8
 import sys
+import time
+
 from workmap import Workmap
 from robot import Robot
 from workbench import Workbench
@@ -37,14 +39,18 @@ if __name__ == '__main__':
         workbenchs[idx].target_workbench_list = w2w 
     # 计算一下路径
     workmap.gen_paths()
-    r_idx = 1
-    # path = workmap.get_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[0])
-    # workmap.draw_path(path)
-    path = workmap.get_float_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[0])
+    # workmap.draw_map()
+    # print(time.time()-t1)
+    # r_idx = 1
+    # for target_workbench in robots[r_idx].target_workbench_list:
+    #     path = workmap.get_path(robots[r_idx].loc, target_workbench)
+    #     workmap.draw_path(path)
+    # path = workmap.get_float_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[0])
+    # # 测试路径，非正式决策路径
+    # robots[r_idx].path = np.array(path)
+    # robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
     # 测试路径，非正式决策路径
-    robots[r_idx].path = np.array(path)
-    robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
-    # 测试路径，非正式决策路径
+    # time.sleep(10)
     controller = Controller(robots, workbenchs, workmap)
     finish()
 
