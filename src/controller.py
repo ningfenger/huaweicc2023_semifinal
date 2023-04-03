@@ -443,7 +443,7 @@ class Controller:
                     robot.rotate(0)
             elif robot_status == Robot.AVOID_CLASH:
                 # 距离足够近则取消冲突避免状态
-                if (robot.loc[0]-robot.path[-1][0])**2 + (robot.loc[1]-robot.path[-1][1])**2 < 0.01:
+                if (robot.loc[0]-robot.path[-1][0])**2 + (robot.loc[1]-robot.path[-1][1])**2 < 0.05:
                     if robot.last_status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
                         # 重新规划路径
                         robot.set_path(self.m_map.get_float_path(robot.loc, robot.get_buy()))
