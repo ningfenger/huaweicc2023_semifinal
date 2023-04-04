@@ -119,6 +119,8 @@ class Controller:
                     robot2.is_deadlock = True
                     robot.is_deadlock = True
                     robot.update_frame_pisition(frame)
+                    robot.deadlock_with = robot2.ID
+                    robot2.deadlock_with = robot.ID
                     robot2.update_frame_pisition(frame)
                     sys.stderr.write("检测到死锁"+",robot_id:"+str(robot.ID)+"\n")
                     sys.stderr.write("检测到死锁"+",robot_id:"+str(robot2.ID)+"\n")
