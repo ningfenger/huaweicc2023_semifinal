@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 
-def will_collide(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r = 0.53):
+def will_collide(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r = 1.06):
     # 计算机器人之间的初始距离
     dist = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
     # 计算相对速度
