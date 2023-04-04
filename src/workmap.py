@@ -62,11 +62,11 @@ class Workmap:
         if rode:
             x += 0.25
             y -= 0.25
-        # elif (i, j) in self.broad_shifting:
-        #     # 特殊宽路
-        #     shifting = self.broad_shifting[(i, j)]
-        #     x += shifting[0]
-        #     y += shifting[1]
+        elif (i, j) in self.broad_shifting:
+            # 特殊宽路
+            shifting = self.broad_shifting[(i, j)]
+            x += shifting[0]
+            y += shifting[1]
         return x, y
 
     def loc_float2int(self, x, y):
@@ -149,9 +149,9 @@ class Workmap:
                             self.broad_shifting[(i,j)] = (-y*0.25 ,0)
                         else: 
                             # 往远离的方向推
-                            # self.broad_shifting[(i,j)] = (-y*0.2,x*0.2)
+                            self.broad_shifting[(i,j)] = (-y*0.18, x*0.18)
                             # 莽一下，不要这个点试试, 因为旁边肯定是个宽路
-                            self.map_gray[i][j] = self.GROUND
+                            # self.map_gray[i][j] = self.GROUND
 
                 # for x,y in []
                 #     tmp_blocks = 0
