@@ -147,7 +147,10 @@ class Workmap:
                             self.broad_shifting[(i,j)] = (0 ,x*0.25)
                         elif self.map_gray[j-2*x][i-y] == self.BLOCK:
                             self.broad_shifting[(i,j)] = (-y*0.25 ,0)
-                        else: # 莽一下，不要这个点试试
+                        else: 
+                            # 往远离的方向推
+                            # self.broad_shifting[(i,j)] = (-y*0.2,x*0.2)
+                            # 莽一下，不要这个点试试, 因为旁边肯定是个3
                             self.map_gray[i][j] = self.GROUND
 
                 # for x,y in []
