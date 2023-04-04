@@ -454,39 +454,58 @@ class Controller:
         # 判断是否同时到终点僵持
         return col_flag, x_col, y_col, dist_robot, dist_other
 
+
+    def AF(self, loc):
+        row, col = tools.cor2rc(loc[0], loc[1])
+
+
+
     def move(self, idx_robot):
         robot = self.robots[idx_robot]
         k_r = 8
-        dis_l = self.radar(idx_robot, math.pi / 3)
-        dis_r = self.radar(idx_robot, -math.pi / 3)
-        far_flag = False
+        # dis_l = self.radar(idx_robot, math.pi / 3)
+        # dis_r = self.radar(idx_robot, -math.pi / 3)
+        # far_flag = False
         # vex_mod = np.array([0, 0])
         # row_robot, col_robot = tools.cor2rc(self.robots[idx_robot].loc[0], self.robots[idx_robot].loc[1])
         # row_start = row_robot - 2
         # row_end = row_robot + 2
         # col_start = col_robot - 2
         # col_end = col_robot + 2
-        dis2workbench = self.dis2target(idx_robot)
-        if dis2workbench > 2:
-            far_flag = True
 
+        # 到工作台距离 用于判定是否接近道路终点
+        dis2workbench = self.dis2target(idx_robot)
+        # if dis2workbench > 2:
+        #     far_flag = True
+
+        # 判定是否有临时目标点
         if self.robots[idx_robot].temp_target is None:
+            # 没有临时目标点则重新规划
             robot.temp_idx = 0
             target_loc = self.select_target(idx_robot)
             robot.temp_target = target_loc
             # robot.temp_idx = target_idx
 
         else:
+            # 有临时目标点
             dis_temp_target = np.sqrt(
                 np.sum((robot.temp_target - np.array(robot.loc)) ** 2))
             if dis_temp_target > 0.5:
+                # 距离大于给定值时 继续追踪
                 target_loc = robot.temp_target
             else:
+                # 足够接近时 重新选择
                 # robot.path = robot.path[(robot.temp_idx+1):, :]
                 target_loc = self.select_target(idx_robot)
                 robot.temp_target = target_loc
                 # robot.temp_idx = target_idx
 
+        # 根据周围障碍物修正给定目标点 用于局部避撞 尝试解决小黄鸡窄路难以通行问题
+        target_loc_offset = self.AF(robot.loc)
+
+
+
+        # 根据给定目标点修正
         target_vec = [target_loc[0] - robot.loc[0],
                       target_loc[1] - robot.loc[1]]
         dis_target = np.sqrt(np.dot(target_vec, target_vec))
@@ -506,12 +525,7 @@ class Controller:
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
-        # safe_dis = 1.2
-        # if abs(delta_theta_local) < math.pi / 6:
-        #     if dis_l < safe_dis and far_flag:
-        #         delta_theta_local -= math.pi * (safe_dis - dis_l) / 5
-        #     if dis_r < safe_dis and far_flag:
-        #         delta_theta_local += math.pi * (safe_dis - dis_l) / 5
+
         delta_theta = (delta_theta +
                        math.pi) % (2 * math.pi) - math.pi
         col_flag = False
@@ -523,9 +537,9 @@ class Controller:
                     break
 
         self.robots[idx_robot].rotate(delta_theta * k_r)
-        if col_flag and idx_robot < idx_other:
+        if col_flag and idx_robot > idx_other:
             print("forward", idx_robot, -2)
-        elif abs(delta_theta) > math.pi * 5 / 6:
+        elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
             print("forward", idx_robot, -2)
         elif abs(delta_theta) > math.pi / 6:
             print("forward", idx_robot, 0)
