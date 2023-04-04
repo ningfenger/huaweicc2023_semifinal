@@ -49,6 +49,7 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
         self.unreanchble_warkbench = set()  # 记录不能正常使用的工作台
+        self.broad_shifting = {} # 有些特殊宽路的偏移量
 
     @lru_cache(None)
     def loc_int2float(self, i: int, j: int, rode=False):
@@ -61,6 +62,11 @@ class Workmap:
         if rode:
             x += 0.25
             y -= 0.25
+        elif (i,j) in self.broad_shifting:
+            # 特殊宽路
+            shifting = self.broad_shifting[(i,j)]
+            x+=shifting[0]
+            y+=shifting[1]
         return x, y
 
     def loc_float2int(self, x, y):
@@ -137,6 +143,7 @@ class Workmap:
                     flag2 = 0<=i-2*x <=99 and 0<=j+y<=99 and self.map_gray[i-2*x][j] != self.BLOCK and self.map_gray[i-2*x][j+y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
+                        self.broad_shifting[(i,j)] = (-y*0.2, x*0.2)
                 # for x,y in []
                 #     tmp_blocks = 0
                 #     for x, y in [(1,1), (1,-1), (-1,1), (-1,-1)]: # 四个角最多有两个
