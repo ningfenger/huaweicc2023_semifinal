@@ -346,7 +346,7 @@ class Controller:
     def control(self, frame_id: int, money: int):
         # 在这里执行冲突检测和化解并记得记录上一个机器人的状态
         # 如果冲突无法化解，让每个机器人都倒一下车
-        # self.detect_deadlock(frame_id)
+        self.detect_deadlock(frame_id)
 
         print(frame_id)
         sell_out_list = []  # 等待处理预售的机器人列表
