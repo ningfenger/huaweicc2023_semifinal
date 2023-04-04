@@ -122,6 +122,7 @@ class PqItem:
     def point(self):
         return self.__point
 
+
     def __lt__(self, other):
         if self.cost == other.cost:
             return self.point < other.point

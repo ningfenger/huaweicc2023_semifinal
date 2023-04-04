@@ -327,8 +327,13 @@ class Controller:
 
         vec_r2p = robot_loc_m - path_loc_m
         dis_r2p = np.sqrt(np.sum(vec_r2p ** 2, axis=1))
+        mask_greater = dis_r2p < 8
+        mask_smaller = -1 <dis_r2p
         path_loc_m = path_loc_m[dis_r2p < 8]
-        width = 0.3
+        if self.robots[idx_robot].item_type == 0:
+            width = 0.3
+        else:
+            width = 0.6
 
         # robot_loc_m 指向各个点的方向
         theta_set = np.arctan2(path_loc_m[:, 1] - robot_loc_m[1], path_loc_m[:, 0] - robot_loc_m[0]).reshape(-1, 1)
@@ -362,13 +367,14 @@ class Controller:
             detect_r[idx_point] = self.obt_detect(loc0, loc1)
 
         detect_all = detect_r & detect_l & detect_m
+        detect_2 = detect_m & (detect_l | detect_r)
 
 
         if detect_all.any():
             m_index = np.where(detect_all)
             idx_target = m_index[0][len(m_index[0]) - 1]
-        elif detect_m.any():
-            m_index = np.where(detect_m)
+        elif detect_2.any():
+            m_index = np.where(detect_2)
             idx_target = m_index[0][len(m_index[0]) - 1]
         else:
             idx_target = robot.find_temp_tar_idx()
@@ -413,28 +419,41 @@ class Controller:
 
 
     def move(self, idx_robot):
-
+        robot = self.robots[idx_robot]
         k_r = 8
         dis_l = self.radar(idx_robot, math.pi / 3)
         dis_r = self.radar(idx_robot, -math.pi / 3)
         far_flag = False
+        # vex_mod = np.array([0, 0])
+        # row_robot, col_robot = tools.cor2rc(self.robots[idx_robot].loc[0], self.robots[idx_robot].loc[1])
+        # row_start = row_robot - 2
+        # row_end = row_robot + 2
+        # col_start = col_robot - 2
+        # col_end = col_robot + 2
         if self.dis2target(idx_robot) > 2:
             far_flag = True
+
         if self.robots[idx_robot].temp_target is None:
             target_loc = self.select_target(idx_robot)
             self.robots[idx_robot].temp_target = target_loc
+
         else:
-            dis_temp_target = np.sqrt(np.sum((self.robots[idx_robot].temp_target - np.array(self.robots[idx_robot].loc)) ** 2))
-            if dis_temp_target > 6:
-                target_loc = self.robots[idx_robot].temp_target
+            dis_temp_target = np.sqrt(np.sum((robot.temp_target - np.array(robot.loc)) ** 2))
+            if dis_temp_target > 1:
+                target_loc = robot.temp_target
             else:
+
                 target_loc = self.select_target(idx_robot)
                 self.robots[idx_robot].temp_target = target_loc
+
         target_vec = [target_loc[0] - self.robots[idx_robot].loc[0],
                             target_loc[1] - self.robots[idx_robot].loc[1]]
+        dis_target = np.sqrt(np.dot(target_vec, target_vec))
+
+
         target_theta = np.arctan2(
             target_vec[1], target_vec[0])
-        dis_target = np.sqrt(np.dot(target_vec, target_vec))
+
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
@@ -459,9 +478,11 @@ class Controller:
         elif abs(delta_theta) > math.pi / 6:
             print("forward", idx_robot, 0)
         else:
-            print("forward", idx_robot, dis_target * 5)
+            print("forward", idx_robot, (dis_target + 0.5) * 5)
 
-        if idx_robot == 1:
+
+        if idx_robot == 3:
+            a = 10000000000000
             a = 10000000000000
         pass
 
