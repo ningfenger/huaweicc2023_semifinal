@@ -142,7 +142,14 @@ class Workmap:
                     flag2 = 0<=i-2*x <=99 and 0<=j+y<=99 and self.map_gray[i-2*x][j] != self.BLOCK and self.map_gray[i-2*x][j+y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
-                        self.broad_shifting[(i,j)] = (0 ,x*0.25)
+                        # 要根据具体情况加偏移量
+                        if self.map_gray[i-2*x][j-y] == self.BLOCK:
+                            self.broad_shifting[(i,j)] = (0 ,x*0.25)
+                        elif self.map_gray[j-2*x][i-y] == self.BLOCK:
+                            self.broad_shifting[(i,j)] = (-y*0.25 ,0)
+                        else: # 莽一下，不要这个点试试
+                            self.map_gray[i][j] = self.GROUND
+
                 # for x,y in []
                 #     tmp_blocks = 0
                 #     for x, y in [(1,1), (1,-1), (-1,1), (-1,-1)]: # 四个角最多有两个
@@ -463,7 +470,7 @@ class Workmap:
         aim_node = None  # 记录目标节点
         # 开始找路 直接bfs找一下先看看效果
         while dq:
-            sys.stderr.write(f"可达路径:{dq}\n")
+            # sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
             for x, y in self.TURNS:
                 next_x, next_y = node_x+x, node_y+y
