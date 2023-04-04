@@ -455,8 +455,23 @@ class Controller:
         return col_flag, x_col, y_col, dist_robot, dist_other
 
 
-    def AF(self, loc):
-        row, col = tools.cor2rc(loc[0], loc[1])
+    def AF(self, loc_robot):
+        row, col = self.m_map.loc_float2int(loc_robot[0], loc_robot[1])
+        row_start = min(row - 2, 0)
+        row_stop = min(row + 2, 0)
+        col_start = min(col - 2, 0)
+        col_stop = min(col + 2, 0)
+        offset = np.array([0, 0])
+        for i_row in range(row_start, row_stop + 1):
+            for i_col in range(col_start, col_stop + 1):
+                if self.m_map_arr[i_row, i_col] == 0:
+                    # 这是一个障碍物
+                    loc_obt = np.array(self.m_map.loc_float2int(i_row, i_col))
+                    dis2loc = tools.np_norm(loc_robot, loc_obt)
+                    if dis2loc < 1:
+                        theta = tools.np_theta(loc_obt, loc_robot)
+                        offset = offset + 0.5 * np.array([np.cos(theta), np.cos(theta)])
+
 
 
 
