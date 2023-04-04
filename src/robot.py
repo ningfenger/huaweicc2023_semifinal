@@ -10,12 +10,13 @@ from tools import *
 
 
 class Robot:
-    # 状态常量 0 空闲, 1 购买途中, 2 等待购买, 3 出售途中, 4 等待出售
+    # 状态常量 0 空闲, 1 购买途中, 2 等待购买, 3 出售途中, 4 等待出售, 5 避撞
     FREE_STATUS = 0
     MOVE_TO_BUY_STATUS = 1
     WAIT_TO_BUY_STATUS = 2
     MOVE_TO_SELL_STATUS = 3
     WAIT_TO_SELL_STATUS = 4
+    AVOID_CLASH = 5 
 
     def __init__(self, ID: int, loc: Tuple[int]):
         self.ID = ID
@@ -40,6 +41,7 @@ class Robot:
         self.is_deadlock = False  # True if the robot is in a deadlock state
         self.loc_np = np.array(list(self.loc))
         self.is_stuck = False # True if the robot is stuck with wall
+        self.last_status = self.FREE_STATUS # 用于冲撞避免的恢复 如果是等待购买和等待出售直接设置为购买/出售途中，并重新导航
 
     def trans_toward(self, toward):
         if toward < 0:

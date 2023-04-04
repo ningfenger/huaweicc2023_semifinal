@@ -18,9 +18,9 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED = 1 / 4.15 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MOVE_SPEED = 1 / 2 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
     MAX_WAIT = 3.14 * 50  # 最大等待时间
-    SELL_WEIGHT = 1.45  # 优先卖给格子被部分占用的
+    SELL_WEIGHT = 1.5  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.8  # 非 7 卖给89的惩罚
     CONSERVATIVE = 1 + 1 / MOVE_SPEED * 4  # 保守程度 最后时刻要不要操作
 
@@ -365,9 +365,82 @@ class Controller:
             return True
         return False
 
-    def control(self, frame_id: int, money: int):
-        self.detect_deadlock(frame_id)
+    def re_path(self, robot):
+        '''
+        为机器人重新规划路劲
+        '''
+        if robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
+            # 重新规划路径
+            robot.set_path(self.m_map.get_float_path(
+                robot.loc, robot.get_buy()))
+            robot.status = Robot.MOVE_TO_BUY_STATUS
+        elif robot.status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
+            robot.set_path(self.m_map.get_float_path(
+                robot.loc, robot.get_sell()))
+            robot.status = Robot.MOVE_TO_SELL_STATUS
 
+    def process_deadlock(self, frame_id):
+        '''
+        处理死锁
+        '''
+        # 在这里执行冲突检测和化解并记得记录上一个机器人的状态
+        # 如果冲突无法化解，让每个机器人都倒一下车
+        self.detect_deadlock(frame_id)
+        detect_robots = []  # 记录发生冲突的机器人
+        for idx, robot in enumerate(self.robots):
+            if robot.is_stuck:  # 开在墙里了，重新导航即可
+                self.re_path(robot)
+                self.set_robot_state_undeadlock(idx, frame_id)
+            elif robot.is_deadlock and robot.status != Robot.AVOID_CLASH:  # 死锁了
+                self.re_path(robot)  # 先重新导航重置路径
+                detect_robots.append(idx)
+        if len(detect_robots) >= 2:
+            robot1_idx, robot2_idx = detect_robots[0], detect_robots[1]
+            robot1, robot2 = self.robots[robot1_idx], self.robots[robot2_idx]
+            other_locs = []  # 记录另外两个机器人的坐标
+            for idx, robot in enumerate(self.robots):
+                if idx not in [robot1_idx, robot2_idx]:
+                    other_locs.append(robot.loc)
+            # 机器人1的退避路径
+            avoid_path1 = self.m_map.get_avoid_path(
+                robot1.loc, robot2.path, other_locs+[robot2.loc], robot1.item_type != 0)
+            # 机器人2的退避路径
+            avoid_path2 = self.m_map.get_avoid_path(
+                robot2.loc, robot1.path, other_locs+[robot1.loc], robot2.item_type != 0)
+            # 记录一下要避让的机器人
+            avoid_robot = -1
+            if not avoid_path1 and avoid_path2:
+                avoid_robot = robot2_idx
+                avoid_path = avoid_path2
+            elif not avoid_path2 and avoid_path1:
+                avoid_robot = robot1_idx
+                avoid_path = avoid_path1
+            elif avoid_path1 and avoid_path2:
+                # 1 要走得路多，2让
+                if len(avoid_path1) >= len(avoid_path2):
+                    avoid_robot = robot2_idx
+                    avoid_path = avoid_path2
+                else:
+                    avoid_robot = robot1_idx
+                    avoid_path = avoid_path1
+            # 都没法让
+            if avoid_robot == -1:
+                sys.stderr.write(f"都堵死了,robot_id:{robot1_idx},{robot2_idx}\n")
+            else:
+                if avoid_robot == robot1_idx:
+                    walk_robot = robot2_idx
+                else:
+                    walk_robot = robot1_idx
+                # 解锁正常行走的
+                self.set_robot_state_undeadlock(walk_robot, frame_id)
+                # 设置避让状态
+                avoid_robot = self.robots[avoid_robot]
+                avoid_robot.last_status = robot.status
+                avoid_robot.set_path(avoid_path)
+                avoid_robot.status = Robot.AVOID_CLASH
+
+    def control(self, frame_id: int, money: int):
+        self.process_deadlock(frame_id)
         print(frame_id)
         sell_out_list = []  # 等待处理预售的机器人列表
         idx_robot = 0
@@ -415,6 +488,9 @@ class Controller:
                         robot.set_path(self.m_map.get_float_path(
                             robot.loc, robot.get_buy()))
                         continue
+                else:
+                    robot.forward(0)
+                    robot.rotate(0)
             elif robot_status == Robot.MOVE_TO_SELL_STATUS:
                 # 【出售途中】
                 # 判断是否出现了因跳帧导致的购买失败
@@ -455,6 +531,20 @@ class Controller:
                         robot.set_path(self.m_map.get_float_path(
                             robot.loc, idx_workbench_to_sell, True))
                         continue
+                else:
+                    robot.forward(0)
+                    robot.rotate(0)
+            elif robot_status == Robot.AVOID_CLASH:
+                # 距离足够近则取消冲突避免状态
+                if (robot.loc[0]-robot.path[-1][0])**2 + (robot.loc[1]-robot.path[-1][1])**2 < 0.05:
+                    robot.status = robot.last_status
+                    # 重新规划路径，恢复之前状态
+                    if robot.last_status != Robot.FREE_STATUS:
+                        self.re_path(robot)
+                    self.set_robot_state_undeadlock(idx_robot, frame_id)
+                    continue
+                else:
+                    self.move(idx_robot)
             idx_robot += 1
         for idx_robot in sell_out_list:
             robot = self.robots[idx_robot]

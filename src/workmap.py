@@ -8,6 +8,7 @@ import numpy as np
 import time
 from functools import lru_cache
 from collections import deque
+import sys
 
 # import logging
 
@@ -423,7 +424,7 @@ class Workmap:
                 self.sell_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, True)
 
-    def get_avoid_path(self, wait_flaot_loc, work_path, robots_loc, broad_road=False, safe_dis=1.1):
+    def get_avoid_path(self, wait_flaot_loc, work_path, robots_loc, broad_road=False, safe_dis: float = None):
         '''
         为机器人规划一条避让路径, 注意此函数会临时修改map_gray如果后续有多线程优化, 请修改此函数
         wait_flaot_loc: 要避让的机器人坐标
@@ -432,6 +433,11 @@ class Workmap:
         broad_road: 是否只能走宽路, 根据机器人手中是否 持有物品确定
         return: 返回路径, 为空说明无法避让
         '''
+        if not safe_dis:
+            if broad_road:
+                safe_dis = 1.06
+            else:
+                safe_dis = 0.98
         if broad_road:
             low_value = self.BROAD_ROAD
         else:
@@ -439,7 +445,8 @@ class Workmap:
         node_x, node_y = self.loc_float2int(*wait_flaot_loc)
         tmp_blocks = {}  # 将其他机器人及其一圈看做临时障碍物
         path_map = {(node_x, node_y): (node_x, node_y)}  # 记录路径
-        for robot_x, robot_y in robots_loc:
+        for robot_loc in robots_loc:
+            robot_x, robot_y = self.loc_float2int(*robot_loc)
             for x, y in self.TURNS+[(0, 0)]:
                 block_x, block_y = robot_x+x, robot_y+y
                 # 暂存原来的值，方便改回去
@@ -450,9 +457,10 @@ class Workmap:
         aim_node = None  # 记录目标节点
         # 开始找路 直接bfs找一下先看看效果
         while dq:
+            sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
             for x, y in self.TURNS:
-                next_x, next_y = node_x, node_y
+                next_x, next_y = node_x+x, node_y+y
                 if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
                     continue
                 # 保存路径
@@ -465,11 +473,9 @@ class Workmap:
                     break
                 dq.appendleft((next_x, next_y))  # 新点放左边
         # 恢复map_gray
-        for robot_x, robot_y in robots_loc:
-            for x, y in self.TURNS+[(0, 0)]:
-                block_x, block_y = robot_x+x, robot_y+y
-                self.map_gray[block_x][block_y] = tmp_blocks[(
-                    block_x, block_y)]
+        for k,v in tmp_blocks.items():
+             block_x, block_y = k
+             self.map_gray[block_x][block_y] = v
         if not aim_node:
             return []
         path = []  # 重建路径, 这是个逆序的路径
