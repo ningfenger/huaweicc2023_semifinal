@@ -150,7 +150,7 @@ class Workmap:
                         else: 
                             # 往远离的方向推
                             # self.broad_shifting[(i,j)] = (-y*0.2,x*0.2)
-                            # 莽一下，不要这个点试试, 因为旁边肯定是个3
+                            # 莽一下，不要这个点试试, 因为旁边肯定是个宽路
                             self.map_gray[i][j] = self.GROUND
 
                 # for x,y in []
