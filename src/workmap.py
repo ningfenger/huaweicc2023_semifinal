@@ -143,7 +143,7 @@ class Workmap:
                     flag2 = 0<=i-2*x <=99 and 0<=j+y<=99 and self.map_gray[i-2*x][j] != self.BLOCK and self.map_gray[i-2*x][j+y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
-                        self.broad_shifting[(i,j)] = (-y*0.2, x*0.2)
+                        self.broad_shifting[(i,j)] = (0 ,x*0.25)
                 # for x,y in []
                 #     tmp_blocks = 0
                 #     for x, y in [(1,1), (1,-1), (-1,1), (-1,-1)]: # 四个角最多有两个

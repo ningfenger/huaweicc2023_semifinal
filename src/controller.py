@@ -376,7 +376,7 @@ class Controller:
             robot.status = Robot.MOVE_TO_BUY_STATUS
         elif robot.status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
             robot.set_path(self.m_map.get_float_path(
-                robot.loc, robot.get_sell()))
+                robot.loc, robot.get_sell(), True))
             robot.status = Robot.MOVE_TO_SELL_STATUS
 
     def process_deadlock(self, frame_id):
