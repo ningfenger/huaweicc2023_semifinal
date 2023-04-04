@@ -49,7 +49,7 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
         self.unreanchble_warkbench = set()  # 记录不能正常使用的工作台
-        self.broad_shifting = {} # 有些特殊宽路的偏移量
+        self.broad_shifting = {}  # 有些特殊宽路的偏移量
 
     @lru_cache(None)
     def loc_int2float(self, i: int, j: int, rode=False):
@@ -62,11 +62,11 @@ class Workmap:
         if rode:
             x += 0.25
             y -= 0.25
-        elif (i,j) in self.broad_shifting:
-            # 特殊宽路
-            shifting = self.broad_shifting[(i,j)]
-            x+=shifting[0]
-            y+=shifting[1]
+        # elif (i, j) in self.broad_shifting:
+        #     # 特殊宽路
+        #     shifting = self.broad_shifting[(i, j)]
+        #     x += shifting[0]
+        #     y += shifting[1]
         return x, y
 
     def loc_float2int(self, x, y):
@@ -81,7 +81,7 @@ class Workmap:
         '''
         获取某个点到某路径的最短距离
         '''
-        dists = np.sqrt(np.sum((np.array(path) - np.array(loc))**2, axis=1))
+        dists = np.sqrt(np.sum((np.array(path) - np.array(loc)) ** 2, axis=1))
         nearest_row = np.argmin(dists)
         return dists[nearest_row]
 
@@ -110,7 +110,6 @@ class Workmap:
         '''
         识别出窄路和宽路
         '''
-        def not_block(loc): return self.map_gray[loc[0]][loc[1]] != self.BLOCK
         # 先算宽路
         for i in range(1, 99):
             for j in range(1, 99):

@@ -18,6 +18,7 @@ class Robot:
     WAIT_TO_SELL_STATUS = 4
     AVOID_CLASH = 5 
 
+
     def __init__(self, ID: int, loc: Tuple[int]):
         self.ID = ID
         self.loc = copy.deepcopy(loc)
@@ -29,6 +30,7 @@ class Robot:
         self.speed = (0.0, 0.0)  # 线速度
         self.toward = 0.0  # 朝向
         self.status: int = 0  # 0 空闲, 1 购买途中, 2 等待购买, 3 出售途中, 4 等待出售
+        self.move_status: int = 0 # 移动时的状态
         self.target = -1  # 当前机器人的目标控制台 -1代表无目标
         self.__plan = (-1, -1)  # 设定买和卖的目标工作台
         self.target_workbench_list = []  # 可到达的工作台列表
@@ -43,11 +45,16 @@ class Robot:
         self.is_stuck = False # True if the robot is stuck with wall
         self.last_status = self.FREE_STATUS # 用于冲撞避免的恢复 如果是等待购买和等待出售直接设置为购买/出售途中，并重新导航
 
+        # 路径追踪的临时点
+        self.temp_target = None
+
+
     def trans_toward(self, toward):
         if toward < 0:
             return 2 * np.pi + toward
         return toward
     
+
     def update_frame_pisition(self, frame):
         """
         更新pre_frame,pre_position,pre_toward
@@ -104,6 +111,15 @@ class Robot:
         return target1, target2
         # return line_ray_intersection2(target1, target2, targetb1, targetb2)
         # return line_ray_intersection(target1, target2, self.loc, self.toward)
+
+    def find_temp_tar_idx(self):
+        robot_pos = np.array(list(self.loc))
+        dists = np.sqrt(np.sum((self.path - robot_pos) ** 2, axis=1))
+        nearest_row = np.argmin(dists)
+        row1 = min(nearest_row + 1, len(self.path) - 1)
+
+        return row1
+
 
     # 四个动作
     def forward(self, speed: float):
