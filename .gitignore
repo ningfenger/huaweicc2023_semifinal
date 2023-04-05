@@ -7,10 +7,9 @@ __pycache__/
 *.log
 .vscode/
 replayer/
-
+*.zip
 .idea/
 replay/
-
 # C extensions
 *.so
 

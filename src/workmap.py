@@ -8,6 +8,7 @@ import numpy as np
 import time
 from functools import lru_cache
 from collections import deque
+import sys
 
 # import logging
 
@@ -48,6 +49,7 @@ class Workmap:
         self.buy_map = {}  # 空手时到每个工作台的路径
         self.sell_map = {}  # 手持物品时到某个工作台的路径
         self.unreanchble_warkbench = set()  # 记录不能正常使用的工作台
+        self.broad_shifting = {}  # 有些特殊宽路的偏移量
 
     @lru_cache(None)
     def loc_int2float(self, i: int, j: int, rode=False):
@@ -60,6 +62,11 @@ class Workmap:
         if rode:
             x += 0.25
             y -= 0.25
+        elif (i, j) in self.broad_shifting:
+            # 特殊宽路
+            shifting = self.broad_shifting[(i, j)]
+            x += shifting[0]
+            y += shifting[1]
         return x, y
 
     def loc_float2int(self, x, y):
@@ -74,7 +81,7 @@ class Workmap:
         '''
         获取某个点到某路径的最短距离
         '''
-        dists = np.sqrt(np.sum((np.array(path) - np.array(loc))**2, axis=1))
+        dists = np.sqrt(np.sum((np.array(path) - np.array(loc)) ** 2, axis=1))
         nearest_row = np.argmin(dists)
         return dists[nearest_row]
 
@@ -103,7 +110,6 @@ class Workmap:
         '''
         识别出窄路和宽路
         '''
-        def not_block(loc): return self.map_gray[loc[0]][loc[1]] != self.BLOCK
         # 先算宽路
         for i in range(1, 99):
             for j in range(1, 99):
@@ -136,6 +142,17 @@ class Workmap:
                     flag2 = 0<=i-2*x <=99 and 0<=j+y<=99 and self.map_gray[i-2*x][j] != self.BLOCK and self.map_gray[i-2*x][j+y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
+                        # 要根据具体情况加偏移量
+                        if self.map_gray[i-2*x][j-y] == self.BLOCK:
+                            self.broad_shifting[(i,j)] = (0 ,x*0.25)
+                        elif self.map_gray[j-2*x][i-y] == self.BLOCK:
+                            self.broad_shifting[(i,j)] = (-y*0.25 ,0)
+                        else: 
+                            # 往远离的方向推
+                            self.broad_shifting[(i,j)] = (-y*0.18, x*0.18)
+                            # 莽一下，不要这个点试试, 因为旁边肯定是个宽路
+                            # self.map_gray[i][j] = self.GROUND
+
                 # for x,y in []
                 #     tmp_blocks = 0
                 #     for x, y in [(1,1), (1,-1), (-1,1), (-1,-1)]: # 四个角最多有两个
@@ -423,7 +440,7 @@ class Workmap:
                 self.sell_map[idx] = copy.deepcopy(base_map)
                 self.gen_a_path(idx, loc, True)
 
-    def get_avoid_path(self, wait_flaot_loc, work_path, robots_loc, broad_road=False, safe_dis=1.1):
+    def get_avoid_path(self, wait_flaot_loc, work_path, robots_loc, broad_road=False, safe_dis: float = None):
         '''
         为机器人规划一条避让路径, 注意此函数会临时修改map_gray如果后续有多线程优化, 请修改此函数
         wait_flaot_loc: 要避让的机器人坐标
@@ -432,6 +449,11 @@ class Workmap:
         broad_road: 是否只能走宽路, 根据机器人手中是否 持有物品确定
         return: 返回路径, 为空说明无法避让
         '''
+        if not safe_dis:
+            if broad_road:
+                safe_dis = 1.06
+            else:
+                safe_dis = 0.98
         if broad_road:
             low_value = self.BROAD_ROAD
         else:
@@ -439,7 +461,8 @@ class Workmap:
         node_x, node_y = self.loc_float2int(*wait_flaot_loc)
         tmp_blocks = {}  # 将其他机器人及其一圈看做临时障碍物
         path_map = {(node_x, node_y): (node_x, node_y)}  # 记录路径
-        for robot_x, robot_y in robots_loc:
+        for robot_loc in robots_loc:
+            robot_x, robot_y = self.loc_float2int(*robot_loc)
             for x, y in self.TURNS+[(0, 0)]:
                 block_x, block_y = robot_x+x, robot_y+y
                 # 暂存原来的值，方便改回去
@@ -450,9 +473,10 @@ class Workmap:
         aim_node = None  # 记录目标节点
         # 开始找路 直接bfs找一下先看看效果
         while dq:
+            # sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
             for x, y in self.TURNS:
-                next_x, next_y = node_x, node_y
+                next_x, next_y = node_x+x, node_y+y
                 if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
                     continue
                 # 保存路径
@@ -465,11 +489,9 @@ class Workmap:
                     break
                 dq.appendleft((next_x, next_y))  # 新点放左边
         # 恢复map_gray
-        for robot_x, robot_y in robots_loc:
-            for x, y in self.TURNS+[(0, 0)]:
-                block_x, block_y = robot_x+x, robot_y+y
-                self.map_gray[block_x][block_y] = tmp_blocks[(
-                    block_x, block_y)]
+        for k,v in tmp_blocks.items():
+             block_x, block_y = k
+             self.map_gray[block_x][block_y] = v
         if not aim_node:
             return []
         path = []  # 重建路径, 这是个逆序的路径
