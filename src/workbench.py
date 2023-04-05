@@ -22,6 +22,12 @@ class Workbench:
         6: sum([1 << i for i in (2, 3)]),
         7: sum([1 << i for i in (4, 5, 6)])
     }
+    # 7号工作台急需原料的情况
+    WORKSTAND_STARVE = {
+        sum([1 << i for i in (4, 5)]):6,
+        sum([1 << i for i in (4, 6)]):5,
+        sum([1 << i for i in (5, 6)]):4,
+    }
 
     def __init__(self, ID: int, typeID: int, loc: Tuple[float]):
         self.ID = ID  # 编号
