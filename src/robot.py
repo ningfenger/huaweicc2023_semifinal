@@ -16,7 +16,7 @@ class Robot:
     WAIT_TO_BUY_STATUS = 2
     MOVE_TO_SELL_STATUS = 3
     WAIT_TO_SELL_STATUS = 4
-    AVOID_CLASH = 5 
+
 
 
     def __init__(self, ID: int, loc: Tuple[int]):
@@ -45,6 +45,8 @@ class Robot:
         self.is_stuck = False # True if the robot is stuck with wall
         self.last_status = self.FREE_STATUS # 用于冲撞避免的恢复 如果是等待购买和等待出售直接设置为购买/出售途中，并重新导航
         self.deadlock_with = -1
+        # 避让等待
+        self.frame_wait = 0
         # 路径追踪的临时点
         self.temp_target = None
 
@@ -73,10 +75,12 @@ class Robot:
     def set_path(self, path: List[Tuple[float, float]]):
         '''
         设置机器人移动路径
-        :param path: 路径，float型的坐标列表
+        :param path: 路径, float型的坐标列表
         :return:
         '''
         self.path = np.array(path)
+        self.temp_target = None
+
 
     def get_buy(self) -> int:
         '''
