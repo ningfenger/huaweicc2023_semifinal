@@ -250,8 +250,8 @@ class Controller:
             # 障碍物距离
             return np.sqrt((x_set_near[idx_ob] - point[0]) ** 2 + (y_set_near[idx_ob] - point[1]) ** 2)
 
-    def obt_detect(self, loc0, loc1, carry_flag):
-        # 位置0到位置1区间是否有障碍物
+    def could_run(self, loc0, loc1, carry_flag):
+        # 位置0到位置1区间是否有符合要求
 
         # loc0→loc1的距离
         dis = np.sqrt(np.sum((loc1 - loc0) ** 2))
@@ -345,34 +345,179 @@ class Controller:
                 x = x_set_mid[i_point]
                 y = y_set_mid[i_point]
                 raw, col = tools.cor2rc(x, y)
-
-                if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0 or self.m_map_arr[raw, col] == 2:
-                    # 障碍物
-                    idx_ob = i_point
-                    break
+                if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] < Workmap.SUPER_BROAD_ROAD:
+                    return False
+                # if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0 or self.m_map_arr[raw, col] == 2:
+                #     # 障碍物
+                #     idx_ob = i_point
+                #     break
         else:
             for i_point in range(len(x_set_mid)):
                 x = x_set_mid[i_point]
                 y = y_set_mid[i_point]
                 raw, col = tools.cor2rc(x, y)
+                if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] < Workmap.BROAD_ROAD or (raw, col) in self.m_map.broad_shifting:
+                    return False
+                # if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0:
+                #     # 障碍物
+                #     idx_ob = i_point
+                #     break
+        return True
+        #     # 全程无障碍
+        #     return True
+        # else:
+        #     # 出现障碍
+        #     return False
+    
 
-                if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0:
-                    # 障碍物
-                    idx_ob = i_point
-                    break
-        #################
-        if loc1[0] == 46.25 and loc1[1] == 40.75:
-            a = 10000000000000000000000000000
+    def obt_detect(self, loc0, loc1):
+        # 位置0到位置1区间是否有符合要求
 
-        #################
-        if idx_ob == -1:
-            # 全程无障碍
-            return True
+        # loc0→loc1的距离
+        dis = np.sqrt(np.sum((loc1 - loc0) ** 2))
+
+        # loc0→loc1的方向
+        theta = np.arctan2(loc1[1] - loc0[1], loc1[0] - loc0[0])
+
+        # loc0所处的格子
+
+        raw, col = int(loc0[1] // 0.5), int(loc0[0] // 0.5)
+
+        max_num = np.ceil(dis / 0.5)
+        # 取出所有边界点
+        if theta == 0:
+            # 正右
+            x_set_all = np.arange(
+                col + 1, min(col + max_num + 1, 101), 1) * 0.5
+            y_set_all = np.ones_like(x_set_all) * loc0[1]
+        elif theta == math.pi / 2:
+            # 正上
+            y_set_all = np.arange(
+                raw + 1, min(raw + max_num + 1, 101), 1) * 0.5
+            x_set_all = np.ones_like(y_set_all) * loc0[0]
+        elif theta == math.pi:
+            # 正左
+            x_set_all = np.arange(col, max(col - max_num - 1, -1), -1) * 0.5
+            y_set_all = np.ones_like(x_set_all) * loc0[1]
+        elif theta == -math.pi / 2:
+            # 正下
+            y_set_all = np.arange(raw, max(raw - max_num - 1, -1), -1) * 0.5
+            x_set_all = np.ones_like(y_set_all) * loc0[0]
         else:
-            # 出现障碍
-            return False
+            # 其他方向
+
+            # x方向栅格点集
+            if -math.pi / 2 < theta < math.pi / 2:
+                # 1 4 象限
+                x_set_xgrid = np.arange(
+                    col + 1, min(col + max_num + 1, 101), 1) * 0.5
+            else:
+                # 2 3 象限
+                x_set_xgrid = np.arange(
+                    col, max(col - max_num - 1, -1), -1) * 0.5
+            y_set_xgrid = np.tan(theta) * (x_set_xgrid - loc0[0]) + loc0[1]
+
+            # y方向栅格点集
+            if 0 < theta < math.pi:
+                # 1 2 象限
+                y_set_ygrid = np.arange(
+                    raw + 1, min(raw + max_num + 1, 101), 1) * 0.5
+
+            else:
+                # 3 4 象限
+                y_set_ygrid = np.arange(
+                    raw, max(raw - max_num - 1, -1), -1) * 0.5
+            x_set_ygrid = 1 / np.tan(theta) * \
+                (y_set_ygrid - loc0[1]) + loc0[0]
+            x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
+            y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
+
+            # 得到排序后的索引
+            idx = np.argsort(y_set_all)
+            # 将坐标按照排序后的索引进行排序
+            if theta < 0:
+                x_set_all = x_set_all[idx]
+                y_set_all = y_set_all[idx]
+            else:
+                x_set_all = x_set_all[idx[::-1]]
+                y_set_all = y_set_all[idx[::-1]]
+
+        # 取出所有边界点↑
+        x_set_near = x_set_all[:-1]
+        x_set_far = x_set_all[1:]
+
+        y_set_near = y_set_all[:-1]
+        y_set_far = y_set_all[1:]
+
+        x_set_mid = (x_set_near + x_set_far) / 2
+        y_set_mid = (y_set_near + y_set_far) / 2
+
+        dis_set = np.sqrt(
+            (x_set_near - loc0[0]) ** 2 + (y_set_near - loc0[1]) ** 2)
+        mask = np.zeros_like(x_set_mid, dtype=bool)
+        mask[dis_set <= dis] = True
+        x_set_mid = x_set_mid[mask]
+        y_set_mid = y_set_mid[mask]
+        idx_ob = -1
+        for i_point in range(len(x_set_mid)):
+            x = x_set_mid[i_point]
+            y = y_set_mid[i_point]
+            raw, col = tools.cor2rc(x, y)
+            if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0:
+                return False
+        return True
+
 
     def select_target(self, idx_robot):
+        robot = self.robots[idx_robot]
+        robot_loc_m = np.array(robot.loc).copy()
+        path_loc_m = robot.path.copy()
+
+
+        vec_r2p = robot_loc_m - path_loc_m
+        dis_r2p = np.sqrt(np.sum(vec_r2p ** 2, axis=1))
+        mask_greater = dis_r2p < 40
+        mask_smaller = 0.3 < dis_r2p
+        mask = mask_greater & mask_smaller
+        path_loc_m = path_loc_m[mask]
+        if self.robots[idx_robot].item_type == 0:
+            carry_flag = False
+        else:
+            carry_flag = True
+
+        # robot_loc_m 指向各个点的方向
+        theta_set = np.arctan2(
+            path_loc_m[:, 1] - robot_loc_m[1], path_loc_m[:, 0] - robot_loc_m[0]).reshape(-1, 1)
+        
+
+        len_path = path_loc_m.shape[0]
+        detect_m = np.full(len_path, False)
+
+        for idx_point in range(len_path):
+            loc0 = robot_loc_m
+            loc1 = path_loc_m[idx_point, :]
+            detect_m[idx_point] = self.could_run(loc0, loc1, carry_flag)
+
+        if detect_m.any():
+            m_index = np.where(detect_m)[0]
+            idx_target = m_index[len(m_index) - 1]
+            target_point = path_loc_m[idx_target, :]
+            idx_point = np.where(mask)[0][idx_target]
+        # elif detect_2.any():
+        #     m_index = np.where(detect_2)[0]
+        #     idx_target = m_index[len(m_index) - 1]
+        #     target_point = path_loc_m[idx_target, :]
+        #     idx_point = np.where(mask)[0][idx_target]
+        else:
+            idx_target = robot.find_temp_tar_idx()
+            target_point = robot.path[idx_target, :]
+            idx_point = idx_target
+        # ,
+
+        return target_point, idx_point
+
+
+    def select_target_bck(self, idx_robot):
         robot = self.robots[idx_robot]
         robot_loc_m = np.array(robot.loc).copy()
         path_loc_m = robot.path.copy()
@@ -418,15 +563,15 @@ class Controller:
         for idx_point in range(len_path):
             loc0 = robot_loc_m
             loc1 = path_loc_m[idx_point, :]
-            detect_m[idx_point] = self.obt_detect(loc0, loc1, carry_flag)
+            detect_m[idx_point] = self.could_run(loc0, loc1, carry_flag)
 
             loc0 = robot_loc_l[idx_point, :]
             loc1 = path_loc_l[idx_point, :]
-            detect_l[idx_point] = self.obt_detect(loc0, loc1, carry_flag)
+            detect_l[idx_point] = self.could_run(loc0, loc1, carry_flag)
 
             loc0 = robot_loc_r[idx_point, :]
             loc1 = path_loc_r[idx_point, :]
-            detect_r[idx_point] = self.obt_detect(loc0, loc1, carry_flag)
+            detect_r[idx_point] = self.could_run(loc0, loc1, carry_flag)
 
         detect_all = detect_r & detect_l & detect_m
         detect_2 = detect_m & (detect_l | detect_r)
@@ -462,6 +607,10 @@ class Controller:
             a = 100000
 
     def get_other_col_info(self, idx_robot, idx_other):
+        obt_flag = self.obt_detect(np.array(self.robots[idx_robot].loc), np.array(self.robots[idx_other].loc))
+        if not obt_flag:
+            # 有障碍
+            return False, None, None, 0.5, 0.5
         robot_this = self.robots[idx_robot]
         robot_other = self.robots[idx_other]
         vx_robot = robot_this.speed[0]
@@ -759,8 +908,10 @@ class Controller:
                     idx_robot, idx_other)
                 if col_flag:
                     if self.robots[idx_robot].status == Robot.WAIT_TO_BUY_STATUS and self.robots[idx_other].status == Robot.MOVE_TO_SELL_STATUS:
+                        # 买等待的让卖移动
                         adv_flag = True
                     elif self.obt_near_count(robot) < self.obt_near_count(self.robots[idx_other]):
+                        # 改
                         adv_flag = True
                     elif idx_robot < idx_other:
                         adv_flag = True
@@ -801,7 +952,7 @@ class Controller:
             else:
 
                 if flag_obt_near:
-                    print("forward", idx_robot, (dis_target + 0.5) * 10)
+                    print("forward", idx_robot, (dis_target ) * 7)
                 else:
                     print("forward", idx_robot, 6)
 

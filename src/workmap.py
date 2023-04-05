@@ -28,6 +28,7 @@ class Workmap:
     GROUND = 1  # 空地
     ROAD = 2  # 窄路, 临近的四个空地的左下角，因此如果经过这类点请从右上角走
     BROAD_ROAD = 3  # 宽路 瞄着中间走就行
+    SUPER_BROAD_ROAD = 4  # 广路 可以冲刺
     PATH = 5  # 算法规划的路径，绘图用
 
     # TURNS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
@@ -65,7 +66,7 @@ class Workmap:
         elif (i, j) in self.broad_shifting:
             # 特殊宽路
             shifting = self.broad_shifting[(i, j)]
-            sys.stderr.write(f"shifting:{shifting}")
+            # sys.stderr.write(f"shifting:{shifting}")
             x += shifting[0]
             y += shifting[1]
 
@@ -218,18 +219,17 @@ class Workmap:
                     self.unreanchble_warkbench.add((i, j))
                     continue
 
-                # if '1'<=self.map_data[i][j]<='9': # 再给工作台一个机会
-                #     tmp_blocks = [] # 记录障碍物
-                #     for x, y in itertools.product([-1, 0, 1], repeat=2):
-                #         if self.map_gray[i + x][j + y] == self.BLOCK:
-                #             tmp_blocks.append((x,y))
-                #         if len(tmp_blocks) == 1:
-                #             self.map_gray[i][j] = self.BROAD_ROAD
-                #         elif len(tmp_blocks) == 2 and (tmp_blocks[0][0] == tmp_blocks[1][0] or tmp_blocks[0][1] == tmp_blocks[1][1]):
-                #                 self.map_gray[i][j] = self.BROAD_ROAD
-        # 单独处理一圈墙上的工作台
-
-        # 最后集中处理工作台
+        # 算广路 方便机器人冲冲冲 上下左右都是宽路即可
+        for i in range(2, 98):
+            for j in range(2, 98):
+                if self.map_gray[i][j] < self.BROAD_ROAD or (i,j) in self.broad_shifting:
+                    continue
+                # 十字区域都是宽路即可
+                for x, y in [(0,1), (1,0), (0,-1), (-1, 0)]:
+                    if self.map_gray[i][j] < self.BROAD_ROAD or (i,j) in self.broad_shifting:
+                        break
+                else:
+                    self.map_gray[i][j] = self.SUPER_BROAD_ROAD
 
     def robot2workbench(self):
         '''
@@ -289,7 +289,7 @@ class Workmap:
                         visited_workbench.append(
                             (self.workbenchs_loc[(n_x, n_y)], int(self.map_data[n_x][n_y])))  # 将这个工作台添加到列表
                     visited_loc[n_x][n_y] = True
-                    if self.map_gray[n_x][n_y] == self.BROAD_ROAD:
+                    if self.map_gray[n_x][n_y] >= self.BROAD_ROAD:
                         dq.append((n_x, n_y))
             for wb_ID, wb_type in visited_workbench:
                 # 为每一个在集合中的工作台寻找可以访问的目标
