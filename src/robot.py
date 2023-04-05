@@ -48,6 +48,7 @@ class Robot:
         # 路径追踪的临时点
         self.temp_target = None
 
+        self.temp_idx = None
 
     def trans_toward(self, toward):
         if toward < 0:

@@ -359,13 +359,14 @@ class Controller:
         robot_loc_m = np.array(robot.loc).copy()
         path_loc_m = robot.path.copy()
 
-        # path_loc_m = path_loc_m[(int(robot.temp_idx)+1):, :]
+        path_loc_m = path_loc_m[(int(robot.temp_idx)+1):, :]
 
         vec_r2p = robot_loc_m - path_loc_m
         dis_r2p = np.sqrt(np.sum(vec_r2p ** 2, axis=1))
         mask_greater = dis_r2p < 8
-        mask_smaller = -1 < dis_r2p
-        path_loc_m = path_loc_m[mask_greater]
+        mask_smaller = 0.2 < dis_r2p
+        mask = mask_greater & mask_smaller
+        path_loc_m = path_loc_m[mask]
         if self.robots[idx_robot].item_type == 0:
             width = 0.3
         else:
@@ -413,14 +414,17 @@ class Controller:
         if detect_all.any():
             m_index = np.where(detect_all)[0]
             idx_target = m_index[len(m_index) - 1]
+            target_point = path_loc_m[idx_target, :]
         elif detect_2.any():
             m_index = np.where(detect_2)[0]
             idx_target = m_index[len(m_index) - 1]
+            target_point = path_loc_m[idx_target, :]
         else:
             idx_target = robot.find_temp_tar_idx()
+            target_point = robot.path[idx_target, :]
+        # , np.where(mask)[0][idx_target]
 
-        # , np.where(mask_greater)[0][idx_target]
-        return path_loc_m[idx_target, :]
+        return target_point
 
     def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
         # 设置参数
@@ -449,7 +453,7 @@ class Controller:
 
         # 判断是否路上正向对撞
         col_flag, x_col, y_col, dist_robot, dist_other = tools.will_collide(
-            x_robot, y_robot, vx_robot, vy_robot, x_other, y_other, vx_other, vy_other, 1.5)
+            x_robot, y_robot, vx_robot, vy_robot, x_other, y_other, vx_other, vy_other, 0.5)
         # 判断是否路上侧向撞上其他机器人
         # 判断是否同时到终点僵持
         return col_flag, x_col, y_col, dist_robot, dist_other
@@ -457,20 +461,23 @@ class Controller:
 
     def AF(self, loc_robot):
         row, col = self.m_map.loc_float2int(loc_robot[0], loc_robot[1])
-        row_start = min(row - 2, 0)
-        row_stop = min(row + 2, 0)
-        col_start = min(col - 2, 0)
-        col_stop = min(col + 2, 0)
+        row_start = max(row - 2, 0)
+        row_stop = min(row + 2, 99)
+        col_start = max(col - 2, 0)
+        col_stop = min(col + 2, 99)
         offset = np.array([0, 0])
         for i_row in range(row_start, row_stop + 1):
             for i_col in range(col_start, col_stop + 1):
                 if self.m_map_arr[i_row, i_col] == 0:
                     # 这是一个障碍物
-                    loc_obt = np.array(self.m_map.loc_float2int(i_row, i_col))
+                    loc_obt = np.array(self.m_map.loc_int2float(i_row, i_col))
                     dis2loc = tools.np_norm(loc_robot, loc_obt)
                     if dis2loc < 1:
                         theta = tools.np_theta(loc_obt, loc_robot)
+
                         offset = offset + 0.5 * np.array([np.cos(theta), np.cos(theta)])
+        sys.stderr.write(f"势场修正:{offset[0]},{offset[1]}\n")
+        return offset
 
 
 
@@ -516,8 +523,11 @@ class Controller:
                 # robot.temp_idx = target_idx
 
         # 根据周围障碍物修正给定目标点 用于局部避撞 尝试解决小黄鸡窄路难以通行问题
-        target_loc_offset = self.AF(robot.loc)
-
+        dis_temp_target = np.sqrt(
+            np.sum((robot.temp_target - np.array(robot.loc)) ** 2))
+        # if dis_temp_target > 3:
+        #     target_loc_offset = self.AF(robot.loc)
+        #     target_loc = target_loc + target_loc_offset
 
 
         # 根据给定目标点修正
@@ -527,16 +537,16 @@ class Controller:
 
         target_theta = np.arctan2(
             target_vec[1], target_vec[0])
-        if abs(robot.speed[0]) < 0.01 and abs(robot.speed[1]) < 0.01 and dis_target < 0.2:
-            target_loc = np.array(
-                robot.loc) + np.array([np.cos(target_theta+math.pi), np.sin(target_theta+math.pi)]) * 1
-            robot.temp_target = target_loc
-            target_vec = [target_loc[0] - robot.loc[0],
-                          target_loc[1] - robot.loc[1]]
-            dis_target = np.sqrt(np.dot(target_vec, target_vec))
-
-            target_theta = np.arctan2(
-                target_vec[1], target_vec[0])
+        # if abs(robot.speed[0]) < 0.01 and abs(robot.speed[1]) < 0.01 and dis_target < 0.2:
+        #     target_loc = np.array(
+        #         robot.loc) + np.array([np.cos(target_theta+math.pi), np.sin(target_theta+math.pi)]) * 1
+        #     robot.temp_target = target_loc
+        #     target_vec = [target_loc[0] - robot.loc[0],
+        #                   target_loc[1] - robot.loc[1]]
+        #     dis_target = np.sqrt(np.dot(target_vec, target_vec))
+        #
+        #     target_theta = np.arctan2(
+        #         target_vec[1], target_vec[0])
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
@@ -562,7 +572,8 @@ class Controller:
             if dis2workbench < 1.5:
                 print("forward", idx_robot, dis2workbench * 5)
             else:
-                print("forward", idx_robot, (dis_target + 0.5) * 10)
+                print("forward", idx_robot, 6)
+                # print("forward", idx_robot, (dis_target) * 5)
 
         if idx_robot == 3:
             a = 10000000000000
