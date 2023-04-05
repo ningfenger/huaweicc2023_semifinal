@@ -18,11 +18,12 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED = 1 / 2 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
-    MAX_WAIT = 3.14 * 50  # 最大等待时间
+    MOVE_SPEED = 1 / 4 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MAX_WAIT = 3 * 50  # 最大等待时间
     SELL_WEIGHT = 1.5  # 优先卖给格子被部分占用的
-    SELL_DEBUFF = 0.8  # 非 7 卖给89的惩罚
-    CONSERVATIVE = 1 + 1 / MOVE_SPEED * 4  # 保守程度 最后时刻要不要操作
+    SELL_DEBUFF = 0.6  # 非 7 卖给89的惩罚
+    CONSERVATIVE = 1 + 1 / MOVE_SPEED * 1  # 保守程度 最后时刻要不要操作
+    STARVE_WEIGHT = SELL_WEIGHT
 
     FRAME_DIFF_TO_DETECT_DEADLOCK = 20  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
     FRAME_DIFF = 10  # 单位为帧
@@ -39,6 +40,10 @@ class Controller:
         self.workbenchs = workbenchs
         self.m_map = m_map
         self.m_map_arr = np.array(m_map.map_gray)
+        self.starve = {4: 0, 5: 0, 6: 0}  # 当7急需4 5 6 中的一个时, +1 鼓励生产
+        # 预防跳帧使用, 接口先留着
+        self.buy_list = []  # 执行过出售操作的机器人列表
+        self.sell_list = []  # 执行过购买操作的机器人列表
 
     def dis2target(self, idx_robot):
         idx_workbench = self.robots[idx_robot].target
@@ -56,7 +61,8 @@ class Controller:
         @param: frame: 当前的帧数
         """
         for robot in self.robots:
-            frame_diff_to_detect =  self.FRAME_DIFF_TO_DETECT_DEADLOCK + random.randint(5,30)
+            frame_diff_to_detect = self.FRAME_DIFF_TO_DETECT_DEADLOCK + \
+                random.randint(5, 30)
             distance = np.sqrt(
                 np.sum(np.square(robot.loc_np - robot.pre_position)))
             toward_diff = abs(robot.toward - robot.pre_toward)
@@ -678,8 +684,10 @@ class Controller:
                 # sell_weight = self.SELL_WEIGHT**workbench_sell.get_materials_num # 已经占用的格子越多优先级越高
                 sell_weight = self.SELL_WEIGHT if workbench_sell.material else 1  # 已经占用格子的优先级越高
                 sell_debuff = self.SELL_DEBUFF if workbench_sell.typeID == 9 and workbench_sell.typeID != 7 else 1
+                strave_wight = self.STARVE_WEIGHT if self.starve.get(workbench_sell.typeID, 0) > 0 else 1 # 鼓励生产急需商品
                 radio = (workbench_buy.sell_price * time_rate -
-                         workbench_buy.buy_price) / total_frame * sell_weight * sell_debuff
+                         workbench_buy.buy_price) / total_frame * sell_weight * sell_debuff * strave_wight
+                # sys.stderr.write(f"radio:{radio} strave_wight{strave_wight}\n")
                 if radio > max_radio:
                     max_radio = radio
                     robot.set_plan(idx_workbench_to_buy, idx_workbench_to_sell)
@@ -857,6 +865,16 @@ class Controller:
                         robot.item_type):
                     # 可以出售
                     if robot.sell():  # 防止出售失败
+                        # 维护一下急需列表
+                        # 7且不等于0 说明有材料且没满
+                        if workbench_sell.typeID == 7 and workbench_sell.material != 0:
+                            # sys.stderr.write(f"material: {workbench_sell.material}\n")
+                            if workbench_sell.material in Workbench.WORKSTAND_STARVE:  # 就差一个了
+                                self.starve[robot.item_type] -= 1
+                            else:
+                                self.starve[Workbench.WORKSTAND_STARVE[workbench_sell.material+(
+                                    1 << robot.item_type)]] += 1
+                            # sys.stderr.write(f"material: {self.starve}\n")
                         # 取消预定
                         sell_out_list.append(idx_robot)
                         robot.status = Robot.FREE_STATUS
