@@ -65,8 +65,10 @@ class Workmap:
         elif (i, j) in self.broad_shifting:
             # 特殊宽路
             shifting = self.broad_shifting[(i, j)]
+            sys.stderr.write(f"shifting:{shifting}")
             x += shifting[0]
             y += shifting[1]
+
         return x, y
 
     def loc_float2int(self, x, y):
@@ -113,8 +115,8 @@ class Workmap:
         # 先算宽路
         for i in range(1, 99):
             for j in range(1, 99):
-            #     if i==54 and j==57:
-            #         a=1
+                #     if i==54 and j==57:
+                #         a=1
                 '''
                 ...
                 ...
@@ -136,20 +138,22 @@ class Workmap:
                      ...   ...
                     '''
                     x, y = tmp_blocks[0]
-                    if x == 0 or y == 0: # 必须是四个角上
+                    if x == 0 or y == 0:  # 必须是四个角上
                         continue
-                    flag1 = 0<=j-2*x <=99 and 0<=i+y<=99 and self.map_gray[j-2*x][i] != self.BLOCK and self.map_gray[j-2*x][i+y] != self.BLOCK
-                    flag2 = 0<=i-2*x <=99 and 0<=j+y<=99 and self.map_gray[i-2*x][j] != self.BLOCK and self.map_gray[i-2*x][j+y] != self.BLOCK
+                    flag1 = 0 <= j - 2 * x <= 99 and 0 <= i + y <= 99 and self.map_gray[j - 2 * x][i] != self.BLOCK and \
+                            self.map_gray[j - 2 * x][i + y] != self.BLOCK
+                    flag2 = 0 <= i - 2 * x <= 99 and 0 <= j + y <= 99 and self.map_gray[i - 2 * x][j] != self.BLOCK and \
+                            self.map_gray[i - 2 * x][j + y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
                         # 要根据具体情况加偏移量
-                        if self.map_gray[i-2*x][j-y] == self.BLOCK:
-                            self.broad_shifting[(i,j)] = (0 ,x*0.25)
-                        elif self.map_gray[j-2*x][i-y] == self.BLOCK:
-                            self.broad_shifting[(i,j)] = (-y*0.25 ,0)
-                        else: 
+                        if self.map_gray[i - 2 * x][j - y] == self.BLOCK:
+                            self.broad_shifting[(i, j)] = (0, x * 0.25)
+                        elif self.map_gray[j - 2 * x][i - y] == self.BLOCK:
+                            self.broad_shifting[(i, j)] = (-y * 0.25, 0)
+                        else:
                             # 往远离的方向推
-                            self.broad_shifting[(i,j)] = (-y*0.18, x*0.18)
+                            self.broad_shifting[(i, j)] = (-y * 0.25, x * 0.25)
                             # 莽一下，不要这个点试试, 因为旁边肯定是个宽路
                             # self.map_gray[i][j] = self.GROUND
 
@@ -183,14 +187,15 @@ class Workmap:
                 else:
                     self.map_gray[i][j] = self.ROAD
                     # 一个斜着的格子也过不去
-                    if (i == 0 or j == 99 or self.map_gray[i-1][j+1] == self.BLOCK) and (i == 99 or j == 0 or self.map_gray[i+1][j-1] == self.BLOCK):
+                    if (i == 0 or j == 99 or self.map_gray[i - 1][j + 1] == self.BLOCK) and (
+                            i == 99 or j == 0 or self.map_gray[i + 1][j - 1] == self.BLOCK):
                         self.map_gray[i][j] = self.GROUND
         for i, j in self.workbenchs_loc:  # 集中处理工作台
             if self.map_gray[i][j] == self.BROAD_ROAD:
                 continue
             tmp_blocks = []  # 十字区域障碍
             for x, y in [(1, 0), (0, 1), (0, -1), (-1, 0)]:
-                if i+x < 0 or i+x > 99 or j+y < 0 or j+y > 99 or self.map_gray[i + x][j + y] == self.BLOCK:
+                if i + x < 0 or i + x > 99 or j + y < 0 or j + y > 99 or self.map_gray[i + x][j + y] == self.BLOCK:
                     tmp_blocks.append((x, y))
             if len(tmp_blocks) > 2:
                 self.unreanchble_warkbench.add((i, j))
@@ -204,10 +209,12 @@ class Workmap:
                     self.unreanchble_warkbench.add((i, j))
                     continue
             if '4' <= self.map_data[i][j] <= '9':
-                if (i == 0 or j == 0 or self.map_gray[i - 1][j - 1] == self.BLOCK) and (i == 99 or j == 99 or self.map_gray[i + 1][j + 1] == self.BLOCK):
+                if (i == 0 or j == 0 or self.map_gray[i - 1][j - 1] == self.BLOCK) and (
+                        i == 99 or j == 99 or self.map_gray[i + 1][j + 1] == self.BLOCK):
                     self.unreanchble_warkbench.add((i, j))
                     continue
-                if (i == 0 or j == 99 or self.map_gray[i - 1][j + 1] == self.BLOCK) and (i == 99 or j == 0 or self.map_gray[i + 1][j - 1] == self.BLOCK):
+                if (i == 0 or j == 99 or self.map_gray[i - 1][j + 1] == self.BLOCK) and (
+                        i == 99 or j == 0 or self.map_gray[i + 1][j - 1] == self.BLOCK):
                     self.unreanchble_warkbench.add((i, j))
                     continue
 
@@ -398,19 +405,19 @@ class Workmap:
                 for i, j in self.TURNS:
                     next_x, next_y = node_x + i, node_y + j
                     if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][
-                            next_y] < low_value:
+                        next_y] < low_value:
                         continue
                     if (next_x, next_y) not in tmp_reach:
                         if target_map[next_x][next_y]:  # 已被访问过说明是已经添加到树中的节点
                             continue
                         else:
                             angle_diff = abs(last_x + node_x - 2 * next_x) + \
-                                abs(last_y + node_y - 2 * next_y)
+                                         abs(last_y + node_y - 2 * next_y)
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
                     else:
                         angle_diff = abs(last_x + node_x - 2 * next_x) + \
-                            abs(last_y + node_y - 2 * next_y)
+                                     abs(last_y + node_y - 2 * next_y)
                         if angle_diff < tmp_reach[(next_x, next_y)]:
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
@@ -463,11 +470,11 @@ class Workmap:
         path_map = {(node_x, node_y): (node_x, node_y)}  # 记录路径
         for robot_loc in robots_loc:
             robot_x, robot_y = self.loc_float2int(*robot_loc)
-            for x, y in self.TURNS+[(0, 0)]:
-                block_x, block_y = robot_x+x, robot_y+y
+            for x, y in self.TURNS + [(0, 0)]:
+                block_x, block_y = robot_x + x, robot_y + y
                 # 暂存原来的值，方便改回去
                 tmp_blocks[(block_x, block_y)
-                           ] = self.map_gray[block_x][block_y]
+                ] = self.map_gray[block_x][block_y]
                 self.map_gray[block_x][block_y] = self.BLOCK
         dq = deque([(node_x, node_y)])
         aim_node = None  # 记录目标节点
@@ -476,8 +483,9 @@ class Workmap:
             # sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
             for x, y in self.TURNS:
-                next_x, next_y = node_x+x, node_y+y
-                if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][next_y] < low_value:
+                next_x, next_y = node_x + x, node_y + y
+                if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or \
+                        self.map_gray[next_x][next_y] < low_value:
                     continue
                 # 保存路径
                 path_map[(next_x, next_y)] = (node_x, node_y)
@@ -489,9 +497,9 @@ class Workmap:
                     break
                 dq.appendleft((next_x, next_y))  # 新点放左边
         # 恢复map_gray
-        for k,v in tmp_blocks.items():
-             block_x, block_y = k
-             self.map_gray[block_x][block_y] = v
+        for k, v in tmp_blocks.items():
+            block_x, block_y = k
+            self.map_gray[block_x][block_y] = v
         if not aim_node:
             return []
         path = []  # 重建路径, 这是个逆序的路径
@@ -502,7 +510,7 @@ class Workmap:
                 break
             x, y = path_map[(x, y)]
         float_path = []  # 转成浮点
-        for i in range(1, len(path)+1):
+        for i in range(1, len(path) + 1):
             float_path.append(self.loc_int2float(
                 *path[-i], self.map_gray[x][y] == self.ROAD))
         return float_path
@@ -525,20 +533,20 @@ class Workmap:
         if key_point and len(path) > 2:
             new_path = [path[0]]
             # 记录之前两个点的差值
-            tmp_x, tmp_y = path[1][0] - path[0][0], path[1][1]-path[0][1]
+            tmp_x, tmp_y = path[1][0] - path[0][0], path[1][1] - path[0][1]
             idx = 2
             while idx < len(path):
                 next_x, next_y = path[idx][0] - \
-                    path[idx-1][0], path[idx][1]-path[idx-1][1]
+                                 path[idx - 1][0], path[idx][1] - path[idx - 1][1]
                 if next_x != tmp_x or next_y != tmp_y:  # 变向了说明在前一个点处拐弯
-                    new_path.append(path[idx-1])
+                    new_path.append(path[idx - 1])
                     tmp_x, tmp_y = next_x, next_y
                 idx += 1
             new_path.append(path[-1])
             # logging.info(f'Path: {path} new_path{new_path}')
             path = new_path
 
-        for i in range(len(path)-1):
+        for i in range(len(path) - 1):
             x, y = path[i]
             path[i] = self.loc_int2float(
                 x, y, self.map_gray[x][y] == self.ROAD)
@@ -555,7 +563,7 @@ class Workmap:
         # 宽路
         path2 = self.get_path(float_loc, workbench_ID, True)
         # 不存在宽路，或者宽路比窄路多走超过阈值则返回窄路
-        if not path2 or len(path2)-len(path1) > threshold:
+        if not path2 or len(path2) - len(path1) > threshold:
             return path1
         return path2
 
@@ -648,16 +656,22 @@ if __name__ == '__main__':
     # plt.show(block=False)
     import matplotlib.pyplot as plt
 
-    work_map = Workmap(debug=True)
-    work_map.read_map_directly("../maps/4.txt")
-    astar = AStar(work_map)
-    start = (25.25, 49.75)
-    goal = (18.75, 49.75)
+    workbenchs: List[Workbench] = []  # 工作台列表
+    workmap = Workmap(debug=True)
+    workmap.read_map_directly("../maps/4.txt")
+    workmap.init_roads()
+    workmap.gen_paths()
+    for idx, w2w in enumerate(workmap.workbench2workbench()):
+        workbenchs[idx].target_workbench_list = w2w
+    astar = AStar(workmap)
+    start = np.array([25.25, 49.75])
+    # goal = (18.75, 49.75)
     T1 = time.time()
-    path = np.array(astar.get_path_cor(start, goal, False))
+
+    path = workmap.get_float_path(start, 1)
     T2 = time.time()
     print(T2 - T1)
-    img = work_map.map_gray
+    img = workmap.map_gray
     img = np.array(img).astype('uint8')
     plt.imshow(img)
     plt.title("img")

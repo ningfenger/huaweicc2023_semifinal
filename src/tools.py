@@ -4,10 +4,18 @@ import math
 import numpy as np
 import time
 
+def np_norm(loc1, loc2):
+    return np.sqrt(np.sum((loc2 - loc1) ** 2))
 
-def will_collide(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r = 1.06):
+def np_theta(loc1, loc2):
+    vec = loc2 - loc1
+    return np.arctan2(vec[1], vec[0])
+
+def will_collide(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r = 1.1):
     # 计算机器人之间的初始距离
     dist = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    if dist < r:
+        return (True, None, None, 0.1, 0.1)
     # 计算相对速度
     rel_vx = vx1 - vx2
     rel_vy = vy1 - vy2

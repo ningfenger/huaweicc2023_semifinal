@@ -44,10 +44,11 @@ class Robot:
         self.loc_np = np.array(list(self.loc))
         self.is_stuck = False # True if the robot is stuck with wall
         self.last_status = self.FREE_STATUS # 用于冲撞避免的恢复 如果是等待购买和等待出售直接设置为购买/出售途中，并重新导航
-
+        self.deadlock_with = -1
         # 路径追踪的临时点
         self.temp_target = None
 
+        self.temp_idx = None
 
     def trans_toward(self, toward):
         if toward < 0:
@@ -120,7 +121,14 @@ class Robot:
 
         return row1
 
+    def find_temp_tar_idx_path_input(self, path):####################
+        robot_pos = np.array(list(self.loc))
+        dists = np.sqrt(np.sum((path - robot_pos) ** 2, axis=1))
+        nearest_row = np.argmin(dists)
 
+        row1 = min(nearest_row + 1, len(path) - 1)
+
+        return row1
     # 四个动作
     def forward(self, speed: float):
         '''
