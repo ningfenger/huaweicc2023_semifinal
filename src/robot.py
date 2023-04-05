@@ -121,7 +121,13 @@ class Robot:
 
         return row1
 
+    def find_temp_tar_idx_path_input(self, path):
+        robot_pos = np.array(list(self.loc))
+        dists = np.sqrt(np.sum((path - robot_pos) ** 2, axis=1))
+        nearest_row = np.argmin(dists)
+        row1 = min(nearest_row + 1, len(path) - 1)
 
+        return row1
     # 四个动作
     def forward(self, speed: float):
         '''
