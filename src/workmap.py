@@ -65,8 +65,10 @@ class Workmap:
         elif (i, j) in self.broad_shifting:
             # 特殊宽路
             shifting = self.broad_shifting[(i, j)]
+            sys.stderr.write(f"shifting:{shifting}")
             x += shifting[0]
             y += shifting[1]
+
         return x, y
 
     def loc_float2int(self, x, y):
@@ -151,7 +153,7 @@ class Workmap:
                             self.broad_shifting[(i, j)] = (-y * 0.25, 0)
                         else:
                             # 往远离的方向推
-                            self.broad_shifting[(i,j)] = (-y*0.18, x*0.18)
+                            self.broad_shifting[(i, j)] = (-y * 0.25, x * 0.25)
                             # 莽一下，不要这个点试试, 因为旁边肯定是个宽路
                             # self.map_gray[i][j] = self.GROUND
 
@@ -654,16 +656,22 @@ if __name__ == '__main__':
     # plt.show(block=False)
     import matplotlib.pyplot as plt
 
-    work_map = Workmap(debug=True)
-    work_map.read_map_directly("../maps/4.txt")
-    astar = AStar(work_map)
-    start = (25.25, 49.75)
-    goal = (18.75, 49.75)
+    workbenchs: List[Workbench] = []  # 工作台列表
+    workmap = Workmap(debug=True)
+    workmap.read_map_directly("../maps/4.txt")
+    workmap.init_roads()
+    workmap.gen_paths()
+    for idx, w2w in enumerate(workmap.workbench2workbench()):
+        workbenchs[idx].target_workbench_list = w2w
+    astar = AStar(workmap)
+    start = np.array([25.25, 49.75])
+    # goal = (18.75, 49.75)
     T1 = time.time()
-    path = np.array(astar.get_path_cor(start, goal, False))
+
+    path = workmap.get_float_path(start, 1)
     T2 = time.time()
     print(T2 - T1)
-    img = work_map.map_gray
+    img = workmap.map_gray
     img = np.array(img).astype('uint8')
     plt.imshow(img)
     plt.title("img")

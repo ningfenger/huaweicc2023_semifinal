@@ -377,20 +377,19 @@ class Controller:
         robot_loc_m = np.array(robot.loc).copy()
         path_loc_m = robot.path.copy()
 
-        # path_loc_m = path_loc_m[(int(robot.temp_idx)+1):, :]
 
         vec_r2p = robot_loc_m - path_loc_m
         dis_r2p = np.sqrt(np.sum(vec_r2p ** 2, axis=1))
-        mask_greater = dis_r2p < 8
-        mask_smaller = 0.2 < dis_r2p
+        mask_greater = dis_r2p < 40
+        mask_smaller = 0.3 < dis_r2p
         mask = mask_greater & mask_smaller
         path_loc_m = path_loc_m[mask]
         if self.robots[idx_robot].item_type == 0:
             carry_flag = False
-            width = 0.3
+            width = 0.46
         else:
             carry_flag = True
-            width = 0.6
+            width = 0.54
 
         # robot_loc_m 指向各个点的方向
         theta_set = np.arctan2(
@@ -437,11 +436,11 @@ class Controller:
             idx_target = m_index[len(m_index) - 1]
             target_point = path_loc_m[idx_target, :]
             idx_point = np.where(mask)[0][idx_target]
-        elif detect_2.any():
-            m_index = np.where(detect_2)[0]
-            idx_target = m_index[len(m_index) - 1]
-            target_point = path_loc_m[idx_target, :]
-            idx_point = np.where(mask)[0][idx_target]
+        # elif detect_2.any():
+        #     m_index = np.where(detect_2)[0]
+        #     idx_target = m_index[len(m_index) - 1]
+        #     target_point = path_loc_m[idx_target, :]
+        #     idx_point = np.where(mask)[0][idx_target]
         else:
             idx_target = robot.find_temp_tar_idx()
             target_point = robot.path[idx_target, :]
@@ -477,7 +476,7 @@ class Controller:
 
         # 判断是否路上正向对撞
         col_flag, x_col, y_col, dist_robot, dist_other = tools.will_collide(
-            x_robot, y_robot, vx_robot, vy_robot, x_other, y_other, vx_other, vy_other, 0.5)
+            x_robot, y_robot, vx_robot, vy_robot, x_other, y_other, vx_other, vy_other, 0.3)
         # 判断是否路上侧向撞上其他机器人
         # 判断是否同时到终点僵持
         return col_flag, x_col, y_col, dist_robot, dist_other
@@ -524,15 +523,15 @@ class Controller:
             # 有临时目标点
             dis_temp_target = np.sqrt(
                 np.sum((robot.temp_target - np.array(robot.loc)) ** 2))
-            if dis_temp_target > 0.5:
+            if dis_temp_target > 4:
                 # 距离大于给定值时 继续追踪
                 target_loc = robot.temp_target
             else:
                 # 足够接近时 重新选择
-                target_idx = robot.find_temp_tar_idx_path_input(robot.path[(robot.temp_idx):, :])
-
-                target_loc = robot.path[target_idx, :]
-                robot.temp_idx = target_idx
+                temp_path = robot.path[(robot.temp_idx):, :]
+                target_idx = robot.find_temp_tar_idx_path_input(temp_path)
+                target_loc = temp_path[target_idx, :]
+                robot.temp_idx = 0
                 robot.temp_target = target_loc
 
         # # 根据周围障碍物修正给定目标点 用于局部避撞 尝试解决小黄鸡窄路难以通行问题
@@ -574,7 +573,7 @@ class Controller:
                 if col_flag:
                     break
 
-        self.robots[idx_robot].rotate(delta_theta * k_r)
+        self.robots[idx_robot].rotate(delta_theta * k_r + np.random.randn() * 0.1)
         if col_flag and idx_robot > idx_other:
             print("forward", idx_robot, -2)
         elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
@@ -595,18 +594,13 @@ class Controller:
 
 
 
-    def move(self, idx_robot):
+    def move_select(self, idx_robot):
         robot = self.robots[idx_robot]
         k_r = 8
         # dis_l = self.radar(idx_robot, math.pi / 3)
         # dis_r = self.radar(idx_robot, -math.pi / 3)
         # far_flag = False
-        # vex_mod = np.array([0, 0])
-        # row_robot, col_robot = tools.cor2rc(self.robots[idx_robot].loc[0], self.robots[idx_robot].loc[1])
-        # row_start = row_robot - 2
-        # row_end = row_robot + 2
-        # col_start = col_robot - 2
-        # col_end = col_robot + 2
+
 
         # 到工作台距离 用于判定是否接近道路终点
         dis2workbench = self.dis2target(idx_robot)
@@ -666,16 +660,21 @@ class Controller:
         delta_theta = (delta_theta +
                        math.pi) % (2 * math.pi) - math.pi
         col_flag = False
+        adv_flag = False
         for idx_other in range(4):
             if not idx_other == idx_robot:
                 col_flag, x_col, y_col, dist_robot, dist_other = self.get_other_col_info(
                     idx_robot, idx_other)
                 if col_flag:
+                    if self.robots[idx_robot].status == Robot.WAIT_TO_BUY_STATUS and self.robots[idx_other].status == Robot.MOVE_TO_SELL_STATUS:
+                        adv_flag = True
                     break
 
         self.robots[idx_robot].rotate(delta_theta * k_r)
-        if col_flag and idx_robot > idx_other:
-            print("forward", idx_robot, -2)
+
+
+        if col_flag and adv_flag:
+            print("forward", idx_robot, (dist_robot - 1.5) * 1.2)
         elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
             print("forward", idx_robot, -2)
         elif abs(delta_theta) > math.pi / 6:
@@ -684,13 +683,134 @@ class Controller:
             if dis2workbench < 1.5:
                 print("forward", idx_robot, dis2workbench * 5)
             else:
-                print("forward", idx_robot, 6)
-                # print("forward", idx_robot, (dis_target) * 5)
+                # print("forward", idx_robot, 6)
+                print("forward", idx_robot, (dis_target + 0.5) * 10)
 
         if idx_robot == 3:
             a = 10000000000000
             a = 10000000000000
         pass
+
+
+    def obt_near(self, robot):
+        row, col = self.m_map.loc_float2int(*robot.loc)
+        for row_offset, col_offset in Workmap.TURNS:
+            new_row = row + row_offset
+            new_col = col + col_offset
+            if new_col < 0 or new_col > 99 or new_row < 0 or new_row > 99 or self.m_map.map_gray[new_row][new_col] == Workmap.BLOCK:
+                return False
+        return True
+
+
+    def obt_near_count(self, robot):
+        row, col = self.m_map.loc_float2int(*robot.loc)
+        count = 0
+        for row_offset, col_offset in Workmap.TURNS:
+            new_row = row + row_offset
+            new_col = col + col_offset
+            if new_col < 0 or new_col > 99 or new_row < 0 or new_col > 99 or self.m_map.map_gray[new_row][new_col] == Workmap.BLOCK:
+                count += 1
+        return count
+
+    def move(self, idx_robot):
+        robot = self.robots[idx_robot]
+        k_r = 8
+
+        flag_obt_near = self.obt_near(robot)
+
+
+        # 到工作台距离 用于判定是否接近道路终点
+        dis2workbench = self.dis2target(idx_robot)
+        if dis2workbench > 2:
+            far_flag = True
+
+        # 判定是否有临时目标点
+        if self.robots[idx_robot].temp_target is None:
+            # 没有临时目标点则重新规划
+            self.re_path(robot)
+            if flag_obt_near:
+                target_loc, target_idx = self.select_target(idx_robot)
+            else:
+                target_idx = robot.find_temp_tar_idx()
+                target_loc = robot.path[target_idx, :]
+            robot.temp_target = target_loc
+        else:
+            # 有临时目标点
+            dis_temp_target = np.sqrt(
+                np.sum((robot.temp_target - np.array(robot.loc)) ** 2))
+            if dis_temp_target > 0.24:
+                # 距离大于给定值时 继续追踪
+                target_loc = robot.temp_target
+            else:
+                self.re_path(robot)
+                # 足够接近时 重新选择
+                if flag_obt_near:
+                    target_loc, target_idx = self.select_target(idx_robot)
+                else:
+                    target_idx = robot.find_temp_tar_idx()
+                    target_loc = robot.path[target_idx, :]
+                robot.temp_target = target_loc
+
+        col_flag = False
+        adv_flag = False
+        for idx_other in range(4):
+            if not idx_other == idx_robot:
+                col_flag, x_col, y_col, dist_robot, dist_other = self.get_other_col_info(
+                    idx_robot, idx_other)
+                if col_flag:
+                    if self.robots[idx_robot].status == Robot.WAIT_TO_BUY_STATUS and self.robots[idx_other].status == Robot.MOVE_TO_SELL_STATUS:
+                        adv_flag = True
+                    elif self.obt_near_count(robot) < self.obt_near_count(self.robots[idx_other]):
+                        adv_flag = True
+                    elif idx_robot < idx_other:
+                        adv_flag = True
+                    break
+
+        if col_flag and adv_flag:
+            vec = np.array(self.robots[idx_robot].loc) - np.array(self.robots[idx_other].loc)
+            theta_bck = np.arctan2(vec[1], vec[0])
+            target_loc = robot.loc + 1.5 * np.array([np.cos(theta_bck), np.sin(theta_bck)])
+            robot.temp_target = target_loc
+
+        # 根据给定目标点修正
+        target_vec = [target_loc[0] - robot.loc[0],
+                      target_loc[1] - robot.loc[1]]
+        dis_target = np.sqrt(np.dot(target_vec, target_vec))
+
+        target_theta = np.arctan2(
+            target_vec[1], target_vec[0])
+
+        robot_theta = self.robots[idx_robot].toward
+        delta_theta = target_theta - robot_theta
+
+        delta_theta = (delta_theta +
+                       math.pi) % (2 * math.pi) - math.pi
+
+
+
+        self.robots[idx_robot].rotate(delta_theta * k_r)
+
+
+        if abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
+            print("forward", idx_robot, -2)
+        elif abs(delta_theta) > math.pi / 6:
+            print("forward", idx_robot, 0)
+        else:
+            if dis2workbench < 1.5:
+                print("forward", idx_robot, dis2workbench * 5)
+            else:
+
+                if flag_obt_near:
+                    print("forward", idx_robot, (dis_target + 0.5) * 10)
+                else:
+                    print("forward", idx_robot, 6)
+
+        if idx_robot == 3:
+            a = 10000000000000
+            a = 10000000000000
+        pass
+
+
 
     def move_bck(self, idx_robot):
         # 机器人沿着指定路线移动
