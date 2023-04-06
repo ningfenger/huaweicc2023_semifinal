@@ -45,6 +45,41 @@ def will_collide(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r = 1.1):
         distance2 = math.sqrt((collision_x - x2)**2 + (collision_y - y2)**2) - r
         return (True, collision_x, collision_y, distance1, distance2)
 
+def will_collide2(x1, y1, vx1, vy1, x2, y2, vx2, vy2, t_max, r_colli = 1.09):
+    # 计算机器人之间的初始距离
+    dist = math.sqrt((x1 - x2)**2 + (y1 - y2)**2)
+    if dist < r_colli:
+        return r_colli
+    # 计算相对速度
+    rel_vx = vx1 - vx2
+    rel_vy = vy1 - vy2
+    # 如果机器人的相对速度为零，则它们永远不会相遇
+    if rel_vx == 0 and rel_vy == 0:
+        return 100
+    # 计算参数方程
+    a = rel_vx**2 + rel_vy**2
+    b = 2 * ((x1 - x2) * rel_vx + (y1 - y2) * rel_vy)
+    c = (x1 - x2)**2 + (y1 - y2)**2
+    d_0 = np.sqrt(c)
+    d_max = np.sqrt(a * t_max **2 + b * t_max + c)
+    t_small = - 2 * a / b
+    d_small = np.sqrt(a * t_small **2 + b * t_small + c)
+    if t_small > 0 and t_small < t_max:
+        # 极值点在中间
+        t_set = np.array([0, t_small, t_max])
+        d_set = np.array([d_0, d_small, d_max])
+        idx = np.argmin(d_set)
+        t = t_set[idx]
+        d = d_set[idx]
+    else:
+        # 极值点不在中间
+        t_set = np.array([0, t_max])
+        d_set = np.array([d_0, d_max])
+        idx = np.argmin(d_set)
+        t = t_set[idx]
+        d = d_set[idx]
+
+    return d
 
 def line_ray_intersection(target1, target2, loc, theta):
     dircos_robot = [math.cos(theta), math.sin(theta)]

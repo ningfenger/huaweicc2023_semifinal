@@ -116,8 +116,6 @@ class Workmap:
         # 先算宽路
         for i in range(1, 99):
             for j in range(1, 99):
-                #     if i==54 and j==57:
-                #         a=1
                 '''
                 ...
                 ...
@@ -155,25 +153,6 @@ class Workmap:
                         else:
                             # 往远离的方向推
                             self.broad_shifting[(i, j)] = (-y * 0.25, x * 0.25)
-                            # 莽一下，不要这个点试试, 因为旁边肯定是个宽路
-                            # self.map_gray[i][j] = self.GROUND
-
-                # for x,y in []
-                #     tmp_blocks = 0
-                #     for x, y in [(1,1), (1,-1), (-1,1), (-1,-1)]: # 四个角最多有两个
-                #         if self.map_gray[i + x][j + y] == self.BLOCK:
-                #             tmp_blocks+=1
-                #             if tmp_blocks > 2:
-                #                 break
-                #     else:
-                #         # 先只考虑菱形区域
-                #         if tmp_blocks == 0:
-                #             self.map_gray[i][j] = self.BROAD_ROAD
-                #         else:
-                #             locs1 = [(i-2,j-1), (i-1,j-1), (i+1,j+1), (i+2,j+1)]
-                #             locs2 = [(i-2,j+1), (i-1,j+1), (i+1,j-1), (i+2,j-1)]
-                #             if 1<i<98 and (all(map(not_block, locs1)) or all(map(not_block, locs2))):
-                #                 self.map_gray[i][j] = self.BROAD_ROAD
 
         # 再算窄路
         for i in range(100):
@@ -222,11 +201,11 @@ class Workmap:
         # 算广路 方便机器人冲冲冲 上下左右都是宽路即可
         for i in range(2, 98):
             for j in range(2, 98):
-                if self.map_gray[i][j] < self.BROAD_ROAD or (i,j) in self.broad_shifting:
+                if self.map_gray[i][j] < self.BROAD_ROAD or (i, j) in self.broad_shifting:
                     continue
                 # 十字区域都是宽路即可
-                for x, y in [(0,1), (1,0), (0,-1), (-1, 0)]:
-                    if self.map_gray[i][j] < self.BROAD_ROAD or (i,j) in self.broad_shifting:
+                for x, y in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                    if self.map_gray[i][j] < self.BROAD_ROAD or (i, j) in self.broad_shifting:
                         break
                 else:
                     self.map_gray[i][j] = self.SUPER_BROAD_ROAD
@@ -472,7 +451,7 @@ class Workmap:
             robot_x, robot_y = self.loc_float2int(*robot_loc)
             for x, y in self.TURNS + [(0, 0)]:
                 block_x, block_y = robot_x + x, robot_y + y
-                if block_x < 0 or block_x > 99 or block_y <0 or block_y>99:
+                if block_x < 0 or block_x > 99 or block_y < 0 or block_y > 99:
                     continue
                 # 暂存原来的值，方便改回去
                 tmp_blocks[(block_x, block_y)
@@ -484,7 +463,8 @@ class Workmap:
         while dq:
             # sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
-            for x, y in self.TURNS:
+            block_turns = self.TURNS+[(0,2), (0,-2), (-2,0), (2,0) ]
+            for x, y in block_turns:
                 next_x, next_y = node_x + x, node_y + y
                 if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or \
                         self.map_gray[next_x][next_y] < low_value:
@@ -585,6 +565,8 @@ class Workmap:
         if not target_map[node_x][node_y]:
             for x, y in self.TURNS:
                 test_x, test_y = node_x + x, node_y + y
+                if test_x < 0 or test_x > 99 or test_y < 0 or test_y > 99:
+                    continue
                 if target_map[test_x][test_y]:
                     node_x, node_y = test_x, test_y
                     break

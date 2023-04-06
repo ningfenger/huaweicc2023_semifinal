@@ -2,11 +2,10 @@
 import copy
 from typing import Optional, List, Tuple
 from tools import *
+
 '''
 机器人类
 '''
-
-
 
 
 class Robot:
@@ -16,8 +15,6 @@ class Robot:
     WAIT_TO_BUY_STATUS = 2
     MOVE_TO_SELL_STATUS = 3
     WAIT_TO_SELL_STATUS = 4
-
-
 
     def __init__(self, ID: int, loc: Tuple[int]):
         self.ID = ID
@@ -30,7 +27,7 @@ class Robot:
         self.speed = (0.0, 0.0)  # 线速度
         self.toward = 0.0  # 朝向
         self.status: int = 0  # 0 空闲, 1 购买途中, 2 等待购买, 3 出售途中, 4 等待出售
-        self.move_status: int = 0 # 移动时的状态
+        self.move_status: int = 0  # 移动时的状态
         self.target = -1  # 当前机器人的目标控制台 -1代表无目标
         self.__plan = (-1, -1)  # 设定买和卖的目标工作台
         self.target_workbench_list = []  # 可到达的工作台列表
@@ -38,25 +35,47 @@ class Robot:
 
         # 关于检测机器人对眼死锁的成员变量
         self.pre_position = np.array(list(self.loc))
-        self.pre_frame  = -1 #记录上次一帧内移动距离大于min_dis
-        self.pre_toward = 0 #记录上次一帧内移动距离大于min_dis的角度
+        self.pre_frame = -1  # 记录上次一帧内移动距离大于min_dis
+        self.pre_toward = 0  # 记录上次一帧内移动距离大于min_dis的角度
         self.is_deadlock = False  # True if the robot is in a deadlock state
         self.loc_np = np.array(list(self.loc))
-        self.is_stuck = False # True if the robot is stuck with wall
-        self.last_status = self.FREE_STATUS # 用于冲撞避免的恢复 如果是等待购买和等待出售直接设置为购买/出售途中，并重新导航
+        self.is_stuck = False  # True if the robot is stuck with wall
+        self.last_status = self.FREE_STATUS  # 用于冲撞避免的恢复 如果是等待购买和等待出售直接设置为购买/出售途中，并重新导航
         self.deadlock_with = -1
         # 避让等待
         self.frame_wait = 0
+        # 预估剩余时间
+        self.frame_reman_buy = 0  # 预计多久能买任务
+        self.frame_reman_sell = 0  # 预计多久能卖任务
         # 路径追踪的临时点
         self.temp_target = None
 
         self.temp_idx = None
 
+    def get_frame_reman(self):
+        '''
+        预计还需要多久可以完成当前任务, 与状态有关
+        '''
+        if self.status in [self.MOVE_TO_BUY_STATUS, self.WAIT_TO_BUY_STATUS]:
+            return self.frame_reman_buy
+        elif self.status in [self.MOVE_TO_SELL_STATUS, self.WAIT_TO_SELL_STATUS]:
+            return self.frame_reman_sell
+        else:
+            return 3000
+
+    def update_frame_reman(self):
+        '''
+        更新预估值, 与状态有关
+        '''
+        if self.status in [self.MOVE_TO_BUY_STATUS, self.WAIT_TO_BUY_STATUS]:
+            self.frame_reman_buy -= 1
+        elif self.status in [self.MOVE_TO_SELL_STATUS, self.WAIT_TO_SELL_STATUS]:
+            self.frame_reman_sell -= 1
+
     def trans_toward(self, toward):
         if toward < 0:
             return 2 * np.pi + toward
         return toward
-    
 
     def update_frame_pisition(self, frame):
         """
@@ -81,7 +100,6 @@ class Robot:
         self.path = np.array(path)
         self.temp_target = None
 
-
     def get_buy(self) -> int:
         '''
         获取买的目标
@@ -93,7 +111,6 @@ class Robot:
         获取卖的目标
         '''
         return self.__plan[1]
-
 
     def find_temp_tar(self):
         robot_pos = np.array(list(self.loc))
@@ -125,7 +142,7 @@ class Robot:
 
         return row1
 
-    def find_temp_tar_idx_path_input(self, path):####################
+    def find_temp_tar_idx_path_input(self, path):  ####################
         robot_pos = np.array(list(self.loc))
         dists = np.sqrt(np.sum((path - robot_pos) ** 2, axis=1))
         nearest_row = np.argmin(dists)
@@ -133,6 +150,7 @@ class Robot:
         row1 = min(nearest_row + 1, len(path) - 1)
 
         return row1
+
     # 四个动作
     def forward(self, speed: float):
         '''
