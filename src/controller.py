@@ -843,25 +843,25 @@ class Controller:
         # 初始化一个较大值
         other_dis2workbench = self.WILL_HUQ_DIS
 
-        # if dis2workbench < self.WILL_HUQ_DIS and not col_flag:
-        #     for idx_other in range(4):
-        #         # 锐总说这不合适吧
-        #         if (not idx_other == idx_robot) and self.robots[idx_other].frame_wait == 0 and robot_target == self.robots[idx_other].target:
-        #             # 另一个机器人到工作台的距离
-        #             other_dis2workbench = self.dis2target(idx_other)
-        #             if other_dis2workbench > self.WILL_HUQ_DIS:
-        #                 continue
-        #             other_frame_reman = self.robots[idx_other].get_frame_reman()
-        #             if robot_frame_reman > other_frame_reman:
-        #                 sb_flag = True
-        #             elif robot_frame_reman == other_frame_reman:
-        #                 if dis2workbench > other_dis2workbench:
-        #                     sb_flag = True
-        #                 elif dis2workbench == other_dis2workbench and idx_robot > idx_other:
-        #                     sb_flag = True
-        #             if sb_flag:
-        #                 idx_huq = idx_other
-        #                 break
+        if dis2workbench < self.WILL_HUQ_DIS and not col_flag:
+            for idx_other in range(4):
+                # 锐总说这不合适吧
+                if (not idx_other == idx_robot) and self.robots[idx_other].frame_wait == 0 and robot_target == self.robots[idx_other].target:
+                    # 另一个机器人到工作台的距离
+                    other_dis2workbench = self.dis2target(idx_other)
+                    if other_dis2workbench > self.WILL_HUQ_DIS:
+                        continue
+                    other_frame_reman = self.robots[idx_other].get_frame_reman()
+                    if robot_frame_reman > other_frame_reman:
+                        sb_flag = True
+                    elif robot_frame_reman == other_frame_reman:
+                        if dis2workbench > other_dis2workbench:
+                            sb_flag = True
+                        elif dis2workbench == other_dis2workbench and idx_robot > idx_other:
+                            sb_flag = True
+                    if sb_flag:
+                        idx_huq = idx_other
+                        break
         if sb_flag and dis2workbench > other_dis2workbench:
             sb_safe_dis = True
 
@@ -887,7 +887,7 @@ class Controller:
                 sb_safe_dis = True
                 pass
             elif avoid_idx == idx_robot:
-                sys.stderr.write(f"idx_robot{idx_robot}, robot.item{robot.item_type}, avoid_path{avoid_path}\n")
+                # sys.stderr.write(f"idx_robot{idx_robot}, robot.item{robot.item_type}, avoid_path{avoid_path}\n")
                 self.robots[idx_robot].set_path(avoid_path)
                 self.robots[idx_robot].frame_wait = self.AVOID_FRAME_WAIT
                 # sys.stderr.write(f"idx_robot: {idx_robot}\n")
@@ -911,6 +911,8 @@ class Controller:
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
 
+        delta_theta = (delta_theta +
+                       math.pi) % (2 * math.pi) - math.pi
         if sb_safe_dis:
             # 保持安全车距等待买卖
             print("forward", idx_robot, (d - 3) * 6)
@@ -1080,6 +1082,8 @@ class Controller:
         while idx_robot < 4:
             robot = self.robots[idx_robot]
             robot_status = robot.status
+            # if idx_robot == 1:
+            #     sys.stderr.write(f"idx_robot: {idx_robot} robot_loc{robot.loc} temp_target{robot.temp_target}\n")
             if robot_status == Robot.FREE_STATUS:
                 # 判断是否出现了因跳帧导致的出售失败, 不太对, 预售预购的处理
                 # if robot.item_type != 0:

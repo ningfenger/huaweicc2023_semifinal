@@ -463,7 +463,7 @@ class Workmap:
         while dq:
             # sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
-            block_turns = self.TURNS+[(0,2), (0,-2), (-2,0), (2,0) ]
+            block_turns = self.TURNS + [(0, 2), (0, -2), (-2, 0), (2, 0)]
             for x, y in block_turns:
                 next_x, next_y = node_x + x, node_y + y
                 if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or \
