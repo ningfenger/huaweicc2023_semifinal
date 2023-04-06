@@ -605,6 +605,7 @@ class Controller:
             a = 100000
 
     def get_other_col_info(self, idx_robot, idx_other, t_max):
+
         obt_flag = self.obt_detect(
             np.array(self.robots[idx_robot].loc), np.array(self.robots[idx_other].loc))
         if not obt_flag:
@@ -612,6 +613,18 @@ class Controller:
             return False, None, None, 0.5, 0.5
         robot_this = self.robots[idx_robot]
         robot_other = self.robots[idx_other]
+        vec_o2t = np.array(robot_this.loc) - np.array(robot_other.loc)
+        theta_o2t = np.arctan2(vec_o2t[1], vec_o2t[0])
+        theta_other = robot_other.toward
+        delta_theta = theta_other - theta_o2t
+        delta_theta = (delta_theta +
+                       math.pi) % (2 * math.pi) - math.pi
+
+        dis = np.sqrt(np.dot(vec_o2t, vec_o2t))
+        if dis < 1.07:
+            return True, None, None, 0.5, 0.5
+        else:
+            return False, None, None, 0.5, 0.5
         vx_robot = robot_this.speed[0]
         vy_robot = robot_this.speed[1]
         x_robot = robot_this.loc[0]
@@ -628,6 +641,76 @@ class Controller:
         # 判断是否路上侧向撞上其他机器人
         # 判断是否同时到终点僵持
         return col_flag, x_col, y_col, dist_robot, dist_other
+
+
+    def avoid_deadlock_ssbb(self, idx_robot, idx_other, thr_theta=math.pi / 5, thr_dis=4):
+        # 同买同卖时的虚空锁定 True idx_robot需要减速
+        # 不会虚空锁定 False
+        robot_this = self.robots[idx_robot]
+        robot_other = self.robots[idx_other]
+        obt_flag = self.obt_detect(
+            np.array(robot_this.loc), np.array(robot_other.loc))
+        if not obt_flag:
+            # 有障碍
+            # 不会虚空锁定
+            return False
+
+        if ((robot_this.status == Robot.MOVE_TO_SELL_STATUS and robot_other.status == Robot.MOVE_TO_SELL_STATUS)
+              or
+              (robot_this.status == Robot.MOVE_TO_BUY_STATUS and robot_other.status == Robot.MOVE_TO_BUY_STATUS))\
+                and \
+                robot_this.target == robot_other.target:
+            # 都去一个地方卖/买
+            dis_this = self.dis2target(idx_robot)
+            dis_other = self.dis2target(idx_other)
+
+            # sys.stderr.write(f"dis_this:{dis_this}, dis_other:{dis_other}, dis:{dis}\n")
+            if dis_other < dis_this and dis_other < 1.5 and dis_this < 4:
+                # sys.stderr.write(f"idx_robot{idx_robot}_avoid\n")
+                # 对方离目标点更近
+                return True
+            else:
+                return False
+        else:
+            return False
+
+
+    def avoid_deadlock_sb(self, idx_robot, idx_other, thr_theta=math.pi / 3, thr_dis=5):
+        # 自己买别人卖时的虚空锁定 True idx_robot需要避让
+        # 不会虚空锁定 False
+        robot_this = self.robots[idx_robot]
+        robot_other = self.robots[idx_other]
+        obt_flag = self.obt_detect(
+            np.array(robot_this.loc), np.array(robot_other.loc))
+        if not obt_flag:
+            # 有障碍
+            # 不会虚空锁定
+            # sys.stderr.write("111111111")
+            return False
+        # sys.stderr.write("22222\n")
+        # sys.stderr.write(f"{robot_this.status}--{robot_other.status}--{robot_this.target}--{robot_other.target}\n")
+
+        if robot_this.status in [Robot.WAIT_TO_BUY_STATUS, Robot.MOVE_TO_BUY_STATUS]  and robot_other.status == Robot.MOVE_TO_SELL_STATUS and robot_this.workbench_ID == robot_other.target:
+
+            # sys.stderr.write("33333\n")
+            vec_o2t = np.array(robot_this.loc) - np.array(robot_other.loc)
+            theta_o2t = np.arctan2(vec_o2t[1], vec_o2t[0])
+            theta_other = robot_other.toward
+            delta_theta = theta_other - theta_o2t
+            delta_theta = (delta_theta +
+                           math.pi) % (2 * math.pi) - math.pi
+
+            dis = np.sqrt(np.dot(vec_o2t, vec_o2t))
+            # sys.stderr.write(f"{dis}")
+            if abs(delta_theta) < thr_theta and dis < thr_dis:
+
+                return True
+            else:
+                return False
+
+        else:
+            return False
+
 
     def AF(self, loc_robot):
         row, col = self.m_map.loc_float2int(loc_robot[0], loc_robot[1])
@@ -647,7 +730,7 @@ class Controller:
 
                         offset = offset + 0.5 * \
                             np.array([np.cos(theta), np.cos(theta)])
-        sys.stderr.write(f"势场修正:{offset[0]},{offset[1]}\n")
+        # sys.stderr.write(f"势场修正:{offset[0]},{offset[1]}\n")
         return offset
 
     def obt_near(self, robot):
@@ -694,7 +777,7 @@ class Controller:
             # 有临时目标点
             dis_temp_target = np.sqrt(
                 np.sum((robot.temp_target - np.array(robot.loc)) ** 2))
-            if dis_temp_target > 0.24:
+            if (robot.frame_wait > 0 and dis_temp_target > 0.3) or (robot.frame_wait == 0 and dis_temp_target > 4):
                 # 距离大于给定值时 继续追踪
                 target_loc = robot.temp_target
             else:
@@ -711,52 +794,65 @@ class Controller:
                     target_loc = robot.path[target_idx, :]
                 robot.temp_target = target_loc
 
+
         col_flag = False
         reverse_flag = False
+        avoid_sb_flag = False
+        avoid_ssbb_flag = False
         for idx_other in range(4):
             if not idx_other == idx_robot and self.robots[idx_other].frame_wait == 0:
-                col_flag, x_col, y_col, dist_robot, dist_other = self.get_other_col_info(
-                    idx_robot, idx_other, 0.2)
-                if col_flag and dist_robot < 1.1:
-                    priority_idx = -1
-                    # sys.stderr.write(f"idx_robot: {idx_robot}\n")
-                    if self.robots[idx_robot].status == Robot.WAIT_TO_BUY_STATUS and self.robots[idx_other].status == Robot.MOVE_TO_SELL_STATUS:
-                        # target_workbench = self.robots[idx_other].target
-                        # item_carry = self.robots[idx_other].item_type
 
-                        priority_idx = idx_robot
+                # 买卖行为时的检测
+                avoid_sb_flag = self.avoid_deadlock_sb(idx_robot, idx_other, thr_dis=3)
 
-                    if self.robots[idx_other].status == Robot.WAIT_TO_BUY_STATUS and self.robots[idx_robot].status == Robot.MOVE_TO_SELL_STATUS:
-                        # target_workbench = self.robots[idx_other].target
-                        # item_carry = self.robots[idx_other].item_type
-
-                        priority_idx = idx_other
-
-                    self.re_path(robot)
-                    self.re_path(self.robots[idx_other])
-                    avoid_idx, avoid_path = self.process_deadlock(
-                        idx_robot, idx_other, priority_idx)
-                    # sys.stderr.write(f"avoid_idx: {avoid_idx}\n")
-                    if avoid_idx == -1:
-                        sys.stderr.write(
-                            f"REVERSE idx_robot: {idx_robot}\n")
-                        reverse_flag = True
-                    elif avoid_idx == idx_robot:
-                        self.robots[idx_robot].set_path(avoid_path)
-                        self.robots[idx_robot].frame_wait = self.AVOID_FRAME_WAIT
-                        sys.stderr.write(f"idx_robot: {idx_robot}\n")
-                        flag_obt_near = self.obt_near(robot)
-                        if flag_obt_near:
-                            target_loc, target_idx = self.select_target(
-                                idx_robot)
-                        else:
-                            target_idx = robot.find_temp_tar_idx()
-                            target_loc = robot.path[target_idx, :]
-                        robot.temp_target = target_loc
-                            
+                if avoid_sb_flag:
                     break
 
-        if col_flag and reverse_flag and dist_robot < 1.2:
+                # 买卖行为时的检测
+                avoid_ssbb_flag = self.avoid_deadlock_ssbb(idx_robot, idx_other, thr_dis=3)
+
+                if avoid_ssbb_flag:
+                    break
+
+                col_flag, x_col, y_col, dist_robot, dist_other = self.get_other_col_info(
+                    idx_robot, idx_other, 0.1)
+
+                if col_flag:
+                    break
+
+
+        if (col_flag and dist_robot < 1.07) or avoid_sb_flag:
+            if avoid_sb_flag:
+                priority_idx = idx_robot
+                # sys.stderr.write(f"avoid{idx_robot}")
+            else:
+                priority_idx = -1
+            # sys.stderr.write(f"idx_robot: {idx_robot}\n")
+
+            self.re_path(robot)
+            self.re_path(self.robots[idx_other])
+            avoid_idx, avoid_path = self.process_deadlock(
+                idx_robot, idx_other, priority_idx)
+            # sys.stderr.write(f"avoid_idx: {avoid_idx}\n")
+            if avoid_idx == -1:
+                # sys.stderr.write(
+                #     f"REVERSE idx_robot: {idx_robot}\n")
+                reverse_flag = True
+            elif avoid_idx == idx_robot:
+                self.robots[idx_robot].set_path(avoid_path)
+                self.robots[idx_robot].frame_wait = self.AVOID_FRAME_WAIT
+                # sys.stderr.write(f"idx_robot: {idx_robot}\n")
+                flag_obt_near = self.obt_near(robot)
+                if flag_obt_near:
+                    target_loc, target_idx = self.select_target(
+                        idx_robot)
+                else:
+                    target_idx = robot.find_temp_tar_idx()
+                    target_loc = robot.path[target_idx, :]
+                robot.temp_target = target_loc
+
+        if (col_flag and reverse_flag and dist_robot < 1.2):
+            # 倒退
             vec = np.array(self.robots[idx_robot].loc) - \
                 np.array(self.robots[idx_other].loc)
             theta_bck = np.arctan2(vec[1], vec[0])
@@ -779,22 +875,22 @@ class Controller:
                        math.pi) % (2 * math.pi) - math.pi
 
         self.robots[idx_robot].rotate(delta_theta * k_r)
-        # if col_flag:
-        #     print("forward", idx_robot, dist_robot * k_r)
-        # el
-        if abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
-            print("forward", idx_robot, -2)
-        elif abs(delta_theta) > math.pi / 6:
-            print("forward", idx_robot, 0)
-        else:
-            if dis2workbench < 1.5:
-                print("forward", idx_robot, dis2workbench * 5)
-            else:
 
-                if flag_obt_near:
-                    print("forward", idx_robot, (dis_target) * 7)
-                else:
-                    print("forward", idx_robot, 6)
+        if avoid_ssbb_flag:
+            sys.stderr.write(f"jiansu{idx_robot}")
+            print("forward", idx_robot, (dis_target - 3.5) * 0.1)
+        elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
+            print("forward", idx_robot, -2)
+        elif abs(delta_theta) > math.pi / 3:
+            print("forward", idx_robot, 0)
+        elif dis2workbench < 1.5:
+            print("forward", idx_robot, dis2workbench * 5)
+        else:
+
+            if flag_obt_near:
+                print("forward", idx_robot, (dis_target) * 7)
+            else:
+                print("forward", idx_robot, 6)
 
         if idx_robot == 3:
             a = 10000000000000
@@ -911,6 +1007,7 @@ class Controller:
             robot2.loc, robot1.path, other_locs+[robot1.loc], robot2.item_type != 0, safe_dis)
         # 记录一下要避让的机器人
         avoid_robot = -1
+        avoid_path = []
         if priority_idx == robot1_idx and avoid_path1:
             return robot1_idx, avoid_path1
         elif priority_idx == robot2_idx and avoid_path2:

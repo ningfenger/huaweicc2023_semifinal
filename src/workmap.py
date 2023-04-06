@@ -472,6 +472,8 @@ class Workmap:
             robot_x, robot_y = self.loc_float2int(*robot_loc)
             for x, y in self.TURNS + [(0, 0)]:
                 block_x, block_y = robot_x + x, robot_y + y
+                if block_x < 0 or block_x > 99 or block_y <0 or block_y>99:
+                    continue
                 # 暂存原来的值，方便改回去
                 tmp_blocks[(block_x, block_y)
                 ] = self.map_gray[block_x][block_y]
