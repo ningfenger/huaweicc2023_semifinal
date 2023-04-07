@@ -19,11 +19,11 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED = 1 / 4 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
-    MAX_WAIT = 3 * 50  # 最大等待时间
-    SELL_WEIGHT = 1.5  # 优先卖给格子被部分占用的
+    MOVE_SPEED = 1 / 5 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MAX_WAIT = 1.5 * 50  # 最大等待时间
+    SELL_WEIGHT = 1.6  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.6  # 非 7 卖给89的惩罚
-    CONSERVATIVE = 1 + 1 / MOVE_SPEED * 1  # 保守程度 最后时刻要不要操作
+    CONSERVATIVE = 1 + 1 / MOVE_SPEED * 0  # 保守程度 最后时刻要不要操作
     STARVE_WEIGHT = SELL_WEIGHT
 
     FRAME_DIFF_TO_DETECT_DEADLOCK = 20  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
@@ -68,7 +68,7 @@ class Controller:
         """
         for robot in self.robots:
             frame_diff_to_detect = self.FRAME_DIFF_TO_DETECT_DEADLOCK + \
-                                   random.randint(5, 30)
+                random.randint(5, 30)
             distance = np.sqrt(
                 np.sum(np.square(robot.loc_np - robot.pre_position)))
             toward_diff = abs(robot.toward - robot.pre_toward)
@@ -78,13 +78,13 @@ class Controller:
             if distance > self.MIN_DIS_TO_DETECT_DEADLOCK or \
                     toward_diff > self.MIN_TOWARD_DIF_TO_DETECT_STUCK:
                 robot.update_frame_pisition(frame)
-                if robot.is_deadlock or robot.is_stuck:
-                    if distance > self.MIN_DIS_TO_DETECT_DEADLOCK:
-                        sys.stderr.write(
-                            "因为移动解除死锁卡墙" + ",robot_id:" + str(robot.ID) + "\n")
-                    else:
-                        sys.stderr.write(
-                            "因为旋转解除死锁卡墙" + ",robot_id:" + str(robot.ID) + "\n")
+                # if robot.is_deadlock or robot.is_stuck:
+                #     if distance > self.MIN_DIS_TO_DETECT_DEADLOCK:
+                #         sys.stderr.write(
+                #             "因为移动解除死锁卡墙" + ",robot_id:" + str(robot.ID) + "\n")
+                #     else:
+                #         sys.stderr.write(
+                #             "因为旋转解除死锁卡墙" + ",robot_id:" + str(robot.ID) + "\n")
 
                 robot.is_deadlock = False
                 robot.is_stuck = False
@@ -134,16 +134,18 @@ class Controller:
                     robot.deadlock_with = robot2.ID
                     robot2.deadlock_with = robot.ID
                     robot2.update_frame_pisition(frame)
-                    sys.stderr.write("检测到死锁" + ",robot_id:" + str(robot.ID) + "\n")
-                    sys.stderr.write("检测到死锁" + ",robot_id:" + str(robot2.ID) + "\n")
-                    sys.stderr.write("两个机器人距离为:" + str(distance) + "\n")
+                    # sys.stderr.write("检测到死锁" + ",robot_id:" +
+                    #                  str(robot.ID) + "\n")
+                    # sys.stderr.write("检测到死锁" + ",robot_id:" +
+                    #                  str(robot2.ID) + "\n")
+                    # sys.stderr.write("两个机器人距离为:" + str(distance) + "\n")
 
             if not robot.is_deadlock:
                 if robot.status == robot.WAIT_TO_BUY_STATUS or robot.status == robot.WAIT_TO_SELL_STATUS:
                     robot.update_frame_pisition(frame)
                     continue
                 robot.is_stuck = True
-                sys.stderr.write("检测到卡墙" + ",robot_id:" + str(robot.ID) + "\n")
+                # sys.stderr.write("检测到卡墙" + ",robot_id:" + str(robot.ID) + "\n")
         sys.stderr.flush()
         # if need_update:
         #     for robot in self.robots:
@@ -211,7 +213,7 @@ class Controller:
                 # 3 4 象限
                 y_set_ygrid = np.arange(raw, max(raw - 3, 0), -1) * 0.5
             x_set_ygrid = 1 / np.tan(theta) * \
-                          (y_set_ygrid - point[1]) + point[0]
+                (y_set_ygrid - point[1]) + point[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -237,7 +239,7 @@ class Controller:
 
         mask = np.zeros_like(x_set_mid, dtype=bool)
         mask[(x_set_mid >= 0) & (x_set_mid <= 50) & (
-                y_set_mid >= 0) & (y_set_mid <= 50)] = True
+            y_set_mid >= 0) & (y_set_mid <= 50)] = True
         x_set_mid = x_set_mid[mask]
         y_set_mid = y_set_mid[mask]
         idx_ob = -1
@@ -314,7 +316,7 @@ class Controller:
                 y_set_ygrid = np.arange(
                     raw, max(raw - max_num - 1, -1), -1) * 0.5
             x_set_ygrid = 1 / np.tan(theta) * \
-                          (y_set_ygrid - loc0[1]) + loc0[0]
+                (y_set_ygrid - loc0[1]) + loc0[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -352,7 +354,7 @@ class Controller:
                 y = y_set_mid[i_point]
                 raw, col = tools.cor2rc(x, y)
                 if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[
-                    raw, col] < Workmap.SUPER_BROAD_ROAD:
+                        raw, col] < Workmap.SUPER_BROAD_ROAD:
                     return False
                 # if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0 or self.m_map_arr[raw, col] == 2:
                 #     # 障碍物
@@ -364,7 +366,7 @@ class Controller:
                 y = y_set_mid[i_point]
                 raw, col = tools.cor2rc(x, y)
                 if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[
-                    raw, col] < Workmap.BROAD_ROAD or (raw, col) in self.m_map.broad_shifting:
+                        raw, col] < Workmap.BROAD_ROAD or (raw, col) in self.m_map.broad_shifting:
                     return False
                 # if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0:
                 #     # 障碍物
@@ -435,7 +437,7 @@ class Controller:
                 y_set_ygrid = np.arange(
                     raw, max(raw - max_num - 1, -1), -1) * 0.5
             x_set_ygrid = 1 / np.tan(theta) * \
-                          (y_set_ygrid - loc0[1]) + loc0[0]
+                (y_set_ygrid - loc0[1]) + loc0[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -550,14 +552,14 @@ class Controller:
         theta_r_set = theta_set - math.pi / 2
 
         robot_loc_l = robot_loc_m + width * \
-                      np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
+            np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
         robot_loc_r = robot_loc_m + width * \
-                      np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
+            np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
 
         path_loc_l = path_loc_m + width * \
-                     np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
+            np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
         path_loc_r = path_loc_m + width * \
-                     np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
+            np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
         len_path = path_loc_m.shape[0]
         detect_m = np.full(len_path, False)
         detect_l = np.full(len_path, False)
@@ -610,7 +612,8 @@ class Controller:
             a = 100000
 
     def get_other_col_info(self, idx_robot, idx_other):
-        obt_flag = self.obt_detect(np.array(self.robots[idx_robot].loc), np.array(self.robots[idx_other].loc))
+        obt_flag = self.obt_detect(
+            np.array(self.robots[idx_robot].loc), np.array(self.robots[idx_other].loc))
         if not obt_flag:
             # 有障碍
             return False, None, None, 0.5, 0.5
@@ -647,7 +650,8 @@ class Controller:
 
     def get_other_col_info2(self, idx_robot, idx_other, t_max=0.3):
         # 返回t_max时间内 最短质心距离
-        obt_flag = self.obt_detect(np.array(self.robots[idx_robot].loc), np.array(self.robots[idx_other].loc))
+        obt_flag = self.obt_detect(
+            np.array(self.robots[idx_robot].loc), np.array(self.robots[idx_other].loc))
         if not obt_flag:
             # 有障碍
             return 100
@@ -761,7 +765,8 @@ class Controller:
                     if dis2loc < 1:
                         theta = tools.np_theta(loc_obt, loc_robot)
 
-                        offset = offset + 0.5 * np.array([np.cos(theta), np.cos(theta)])
+                        offset = offset + 0.5 * \
+                            np.array([np.cos(theta), np.cos(theta)])
         # sys.stderr.write(f"势场修正:{offset[0]},{offset[1]}\n")
         return offset
 
@@ -771,7 +776,7 @@ class Controller:
             new_row = row + row_offset
             new_col = col + col_offset
             if new_col < 0 or new_col > 99 or new_row < 0 or new_row > 99 or self.m_map.map_gray[new_row][
-                new_col] == Workmap.BLOCK:
+                    new_col] == Workmap.BLOCK:
                 return False
         return True
 
@@ -782,7 +787,7 @@ class Controller:
             new_row = row + row_offset
             new_col = col + col_offset
             if new_col < 0 or new_col > 99 or new_row < 0 or new_col > 99 or self.m_map.map_gray[new_row][
-                new_col] == Workmap.BLOCK:
+                    new_col] == Workmap.BLOCK:
                 count += 1
         return count
 
@@ -839,22 +844,23 @@ class Controller:
                     idx_huq = idx_other
                     break
         robot_target = robot.target
-        robot_frame_reman = robot.get_frame_reman()
         # 初始化一个较大值
         other_dis2workbench = self.WILL_HUQ_DIS
 
-        if dis2workbench < self.WILL_HUQ_DIS and not col_flag:
+        if dis2workbench < self.WILL_HUQ_DIS and not col_flag and robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
             for idx_other in range(4):
                 # 锐总说这不合适吧
                 if (not idx_other == idx_robot) and self.robots[idx_other].frame_wait == 0 and robot_target == self.robots[idx_other].target:
                     # 另一个机器人到工作台的距离
                     other_dis2workbench = self.dis2target(idx_other)
+                    status_other = self.robots[idx_other].status
                     if other_dis2workbench > self.WILL_HUQ_DIS:
                         continue
-                    other_frame_reman = self.robots[idx_other].get_frame_reman()
-                    if robot_frame_reman > other_frame_reman:
+                    # 买的让卖的
+                    if  status_other in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
                         sb_flag = True
-                    elif robot_frame_reman == other_frame_reman:
+                    # 同买, 近的让远的
+                    elif status_other in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
                         if dis2workbench > other_dis2workbench:
                             sb_flag = True
                         elif dis2workbench == other_dis2workbench and idx_robot > idx_other:
@@ -868,11 +874,21 @@ class Controller:
         if col_flag or (sb_flag and not sb_safe_dis):
             priority_idx = -1
             if col_flag:
-                huq_frame_reman = self.robots[idx_huq].get_frame_reman()
-                if robot_frame_reman > huq_frame_reman:
-                    priority_idx = idx_robot
-                elif huq_frame_reman > robot_frame_reman:
-                    priority_idx = idx_huq
+                status_huq = self.robots[idx_huq].status
+                huq_dis2workbench = self.dis2target(idx_huq)
+                if robot_target == self.robots[idx_huq].target:
+                    # 我买对方卖
+                    if  robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS] and status_huq in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
+                        priority_idx = idx_robot
+                    # 我卖对方买
+                    elif robot.status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS] and status_huq in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
+                        priority_idx = idx_huq
+                    # 同买同卖
+                    else :
+                        if dis2workbench > huq_dis2workbench:
+                            priority_idx = idx_robot
+                        elif dis2workbench < huq_dis2workbench:
+                            priority_idx = idx_huq
             else:
                 priority_idx = idx_robot
             self.re_path(robot)
@@ -993,7 +1009,8 @@ class Controller:
                 # sell_weight = self.SELL_WEIGHT**workbench_sell.get_materials_num # 已经占用的格子越多优先级越高
                 sell_weight = self.SELL_WEIGHT if workbench_sell.material else 1  # 已经占用格子的优先级越高
                 sell_debuff = self.SELL_DEBUFF if workbench_sell.typeID == 9 and workbench_sell.typeID != 7 else 1
-                strave_wight = self.STARVE_WEIGHT if self.starve.get(workbench_sell.typeID, 0) > 0 else 1  # 鼓励生产急需商品
+                strave_wight = self.STARVE_WEIGHT if self.starve.get(
+                    workbench_sell.typeID, 0) > 0 else 1  # 鼓励生产急需商品
                 radio = (workbench_buy.sell_price * time_rate -
                          workbench_buy.buy_price) / total_frame * sell_weight * sell_debuff * strave_wight
                 # sys.stderr.write(f"radio:{radio} strave_wight{strave_wight}\n")
@@ -1064,18 +1081,62 @@ class Controller:
             avoid_path = avoid_path1
         elif avoid_path1 and avoid_path2:
             # 1 要走得路多，2让
-            if len(avoid_path1) > len(avoid_path2) or (
-                    len(avoid_path1) == len(avoid_path2) and robot1_idx < robot2_idx):
+            '''
+                    # robot_frame_reman = robot.get_frame_reman()
+        # other_frame_reman = self.robots[idx_other].get_frame_reman(
+        #             )
+            '''
+            if len(avoid_path1) > len(avoid_path2): 
                 avoid_robot = robot2_idx
                 avoid_path = avoid_path2
-            else:
+            elif len(avoid_path1) < len(avoid_path2):
                 avoid_robot = robot1_idx
                 avoid_path = avoid_path1
+            else:
+                robot1_frame_reman = robot1.get_frame_reman()
+                robot2_frame_reman = robot2.get_frame_reman()
+                if robot1_frame_reman < robot2_frame_reman or robot1_frame_reman == robot2_frame_reman and robot1_idx < robot2_idx:
+                    avoid_robot = robot2_idx
+                    avoid_path = avoid_path2
+                else:
+                    avoid_robot = robot1_idx
+                    avoid_path = avoid_path1
         # sys.stderr.write(f"avoid_robot: {avoid_robot} avoid_path{avoid_path}\n")
         return avoid_robot, avoid_path
 
+    def process_long_deadlock(self, frame_id):
+        '''
+        处理长时间死锁，如果死锁处理失败会出现这种情况
+        '''
+        # 在这里执行冲突检测和化解并记得记录上一个机器人的状态
+        # 如果冲突无法化解，让每个机器人都倒一下车
+        self.detect_deadlock(frame_id)
+        detect_robots = []  # 记录发生冲突的机器人
+        for idx, robot in enumerate(self.robots):
+            if robot.status == Robot.AVOID_CLASH:
+                continue
+            if robot.is_stuck:  # 开在墙里了，重新导航即可
+                self.re_path(robot)
+                self.set_robot_state_undeadlock(idx, frame_id)
+            elif robot.is_deadlock and robot.status != Robot.AVOID_CLASH:  # 死锁了
+                self.re_path(robot)  # 先重新导航重置路径
+                detect_robots.append(idx)
+        if len(detect_robots) >= 2:
+            robot1_idx, robot2_idx = detect_robots[0], detect_robots[1]
+            robot1, robot2 = self.robots[robot1_idx], self.robots[robot2_idx]
+            robot1.last_status = robot1.status
+            robot2.last_status = robot2.status
+            robot1.status = Robot.AVOID_CLASH
+            robot2.status = Robot.AVOID_CLASH
+            robot1.frame_backword = 30
+            robot2.frame_backword = 30
+            if random.randint(1, 2) == 1:
+                robot1.frame_wait = random.randint(3, 5) * 30
+            else:
+                robot2.frame_wait = random.randint(3, 5) * 30
+
     def control(self, frame_id: int, money: int):
-        # self.process_deadlock(frame_id)
+        self.process_long_deadlock(frame_id)
         print(frame_id)
         sell_out_list = []  # 等待处理预售的机器人列表
         idx_robot = 0
@@ -1167,7 +1228,7 @@ class Controller:
                                 self.starve[robot.item_type] -= 1
                             else:
                                 self.starve[Workbench.WORKSTAND_STARVE[workbench_sell.material + (
-                                        1 << robot.item_type)]] += 1
+                                    1 << robot.item_type)]] += 1
                             # sys.stderr.write(f"material: {self.starve}\n")
                         # 取消预定
                         sell_out_list.append(idx_robot)
@@ -1180,6 +1241,18 @@ class Controller:
                         robot.set_path(self.m_map.get_float_path(
                             robot.loc, idx_workbench_to_sell, True))
                         continue
+            elif robot_status == Robot.AVOID_CLASH:
+                if robot.frame_backword > 0:
+                    robot.forward(-2)
+                    robot.frame_backword -= 1
+                elif robot.frame_wait > 0:
+                    robot.forward(0)
+                    robot.frame_wait -= 1
+                else:
+                    self.set_robot_state_undeadlock(idx_robot, frame_id)
+                    robot.status = robot.last_status
+                    self.re_path(robot)
+
             # 根据状态更新预估时间
             robot.update_frame_reman()
             idx_robot += 1

@@ -15,6 +15,7 @@ class Robot:
     WAIT_TO_BUY_STATUS = 2
     MOVE_TO_SELL_STATUS = 3
     WAIT_TO_SELL_STATUS = 4
+    AVOID_CLASH = 5
 
     def __init__(self, ID: int, loc: Tuple[int]):
         self.ID = ID
@@ -44,6 +45,7 @@ class Robot:
         self.deadlock_with = -1
         # 避让等待
         self.frame_wait = 0
+        self.frame_backword = 0 # 后退帧数
         # 预估剩余时间
         self.frame_reman_buy = 0  # 预计多久能买任务
         self.frame_reman_sell = 0  # 预计多久能卖任务
