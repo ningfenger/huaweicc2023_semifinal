@@ -917,12 +917,12 @@ class Controller:
         delta_theta = target_theta - robot_theta
 
 
-        # for idx_other in range(4):
-        #     if not idx_other == idx_robot:
-        #         if self.direct_colli(idx_robot, idx_other):
-        #             delta_theta -= math.pi / 5
-        #             sys.stderr.write("direct avoid")
-        #             break
+        for idx_other in range(4):
+            if not idx_other == idx_robot:
+                if self.direct_colli(idx_robot, idx_other, thr_dis=6):
+                    delta_theta -= math.pi / 5
+                    sys.stderr.write("direct avoid\n")
+                    break
 
         delta_theta = (delta_theta +
                        math.pi) % (2 * math.pi) - math.pi
