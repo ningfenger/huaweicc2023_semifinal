@@ -10,16 +10,12 @@ from functools import lru_cache
 from collections import deque
 import sys
 
-# import logging
-
-# logging.basicConfig(filename='log.log', level=logging.DEBUG)
-
 '''
 地图类，保存整张地图数据
 概念解释：
 窄路: 只用未手持物品的机器人才能通过的路, 判定条件，右上三个点都不是障碍(可以是边界)
 宽路: 手持物品的机器人也能通过的路, 判定条件, 周围一圈都必须是空地(不是障碍或边界)
-狭路: 只能一个机器人通过的路, 判定条件 腐蚀膨胀
+广路: 可以冲刺
 '''
 
 
@@ -66,7 +62,6 @@ class Workmap:
         elif (i, j) in self.broad_shifting:
             # 特殊宽路
             shifting = self.broad_shifting[(i, j)]
-            # sys.stderr.write(f"shifting:{shifting}")
             x += shifting[0]
             y += shifting[1]
 
@@ -106,8 +101,6 @@ class Workmap:
                     self.workbenchs_loc[(i, j)] = len(self.workbenchs_loc)
                     yield self.map_data[i][j], (x, y)
         input()  # 读入ok
-        # if OK_str == 'OK':
-        #     raise Exception('OK')
 
     def init_roads(self):
         '''
@@ -140,9 +133,9 @@ class Workmap:
                     if x == 0 or y == 0:  # 必须是四个角上
                         continue
                     flag1 = 0 <= j - 2 * x <= 99 and 0 <= i + y <= 99 and self.map_gray[j - 2 * x][i] != self.BLOCK and \
-                            self.map_gray[j - 2 * x][i + y] != self.BLOCK
+                        self.map_gray[j - 2 * x][i + y] != self.BLOCK
                     flag2 = 0 <= i - 2 * x <= 99 and 0 <= j + y <= 99 and self.map_gray[i - 2 * x][j] != self.BLOCK and \
-                            self.map_gray[i - 2 * x][j + y] != self.BLOCK
+                        self.map_gray[i - 2 * x][j + y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
                         # 要根据具体情况加偏移量
@@ -280,80 +273,6 @@ class Workmap:
             visited_workbench.clear()
         return res
 
-    # def gen_a_path_old(self, workbench_ID, workbench_loc, broad_road=False):
-    #     '''
-    #     生成一个工作台到其他节点的路径
-    #     workbench_ID: 工作台ID
-    #     workbench_loc: 当前节点坐标
-    #     broad_road: 是否只能走宽路
-    #     '''
-    #     un_reach_node = deque()  # 能达(是路)而未达(没有在最短距离内到达)的点的集合
-    #     if broad_road:
-    #         target_map = self.sell_map[workbench_ID]
-    #         low_value = self.BROAD_ROAD
-    #     else:
-    #         target_map = self.buy_map[workbench_ID]
-    #         low_value = self.ROAD
-    #     loc_x, loc_y = workbench_loc
-    #     target_map[loc_x][loc_y] = workbench_loc
-
-    #     for k in range(1, max(loc_x-1, loc_y-1, 100-loc_x, 100-loc_y)):
-    #         turns = [(k, i) for i in range(-k, k+1)] + [(i, k)
-    #                                                     for i in range(-k+1, k)]
-    #         turns += [(-i, -j) for i, j in turns]
-    #         for x, y in turns:
-    #             node_x, node_y = loc_x + x, loc_y + y
-    #             if node_x < 0 or node_y < 0 or node_x >= 100 or node_y >= 100 or self.map_gray[node_x][node_y] < low_value:
-    #                 continue
-
-    #             # 根据所处位置决定目标方向
-    #             if x == k:
-    #                 test_turns = [(-1, -1), (-1, 0), (-1, 1)]
-    #             elif x == -k:
-    #                 test_turns = [(1, -1), (1, 0), (1, 1)]
-    #             elif y == k:
-    #                 test_turns = [(1, -1), (0, -1), (-1, -1)]
-    #             else:
-    #                 test_turns = [(1, 1), (0, 1), (-1, 1)]
-    #             aim_loc = None
-    #             min_angle_diff = 4  # 减少转弯
-    #             for i, j in test_turns:
-    #                 test_x, test_y = node_x + i, node_y+j
-    #                 if test_x < 0 or test_y < 0 or test_x >= 100 or test_y >= 100 or not target_map[test_x][test_y]:
-    #                     continue
-    #                 last_x, last_y = target_map[test_x][test_y]
-    #                 angle_diff = abs(last_x+node_x-2*test_x) + \
-    #                     abs(last_y+node_y-2*test_y)
-    #                 if angle_diff < min_angle_diff:
-    #                     min_angle_diff = angle_diff
-    #                     aim_loc = (test_x, test_y)
-    #             if aim_loc:
-    #                 target_map[node_x][node_y] = aim_loc
-    #             else:
-    #                 un_reach_node.append((node_x, node_y))
-    #     while un_reach_node:  # 最后集中处理未到达点
-    #         tmp_length = len(un_reach_node)
-    #         for _ in range(tmp_length):
-    #             node_x, node_y = un_reach_node.pop()
-    #             aim_loc = None
-    #             min_angle_diff = 4  # 减少转弯
-    #             for i, j in self.TURNS:
-    #                 test_x, test_y = node_x + i, node_y+j
-    #                 if test_x < 0 or test_y < 0 or test_x >= 100 or test_y >= 100 or not target_map[test_x][test_y]:
-    #                     continue
-    #                 last_x, last_y = target_map[test_x][test_y]
-    #                 angle_diff = abs(last_x+node_x-2*test_x) + \
-    #                     abs(last_y+node_y-2*test_y)
-    #                 if angle_diff < min_angle_diff:
-    #                     min_angle_diff = angle_diff
-    #                     aim_loc = (test_x, test_y)
-    #             if aim_loc:
-    #                 target_map[node_x][node_y] = aim_loc
-    #             else:
-    #                 un_reach_node.appendleft((node_x, node_y))
-    #         if len(un_reach_node) == tmp_length: # 剩下的这些节点已经不可能到了
-    #             break
-
     def gen_a_path(self, workbench_ID, workbench_loc, broad_road=False):
         '''
         生成一个工作台到其他节点的路径，基于迪杰斯特拉优化
@@ -384,19 +303,19 @@ class Workmap:
                 for i, j in self.TURNS:
                     next_x, next_y = node_x + i, node_y + j
                     if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][
-                        next_y] < low_value:
+                            next_y] < low_value:
                         continue
                     if (next_x, next_y) not in tmp_reach:
                         if target_map[next_x][next_y]:  # 已被访问过说明是已经添加到树中的节点
                             continue
                         else:
                             angle_diff = abs(last_x + node_x - 2 * next_x) + \
-                                         abs(last_y + node_y - 2 * next_y)
+                                abs(last_y + node_y - 2 * next_y)
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
                     else:
                         angle_diff = abs(last_x + node_x - 2 * next_x) + \
-                                     abs(last_y + node_y - 2 * next_y)
+                            abs(last_y + node_y - 2 * next_y)
                         if angle_diff < tmp_reach[(next_x, next_y)]:
                             tmp_reach[(next_x, next_y)] = angle_diff
                             target_map[next_x][next_y] = (node_x, node_y)
@@ -455,15 +374,14 @@ class Workmap:
                     continue
                 # 暂存原来的值，方便改回去
                 tmp_blocks[(block_x, block_y)
-                ] = self.map_gray[block_x][block_y]
+                           ] = self.map_gray[block_x][block_y]
                 self.map_gray[block_x][block_y] = self.BLOCK
         dq = deque([(node_x, node_y)])
         aim_node = None  # 记录目标节点
         # 开始找路 直接bfs找一下先看看效果
         while dq:
-            # sys.stderr.write(f"可达路径:{dq}\n")
             node_x, node_y = dq.pop()
-            block_turns = self.TURNS #+ [(0, 2), (0, -2), (-2, 0), (2, 0)]
+            block_turns = self.TURNS  # + [(0, 2), (0, -2), (-2, 0), (2, 0)]
             for x, y in block_turns:
                 next_x, next_y = node_x + x, node_y + y
                 if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or \
@@ -519,7 +437,7 @@ class Workmap:
             idx = 2
             while idx < len(path):
                 next_x, next_y = path[idx][0] - \
-                                 path[idx - 1][0], path[idx][1] - path[idx - 1][1]
+                    path[idx - 1][0], path[idx][1] - path[idx - 1][1]
                 if next_x != tmp_x or next_y != tmp_y:  # 变向了说明在前一个点处拐弯
                     new_path.append(path[idx - 1])
                     tmp_x, tmp_y = next_x, next_y
@@ -590,12 +508,6 @@ class Workmap:
                 return roadID
         return -1
 
-    def add_road(self, road_set: Set[Tuple[int]]):
-        '''
-        创建某条狭路
-        '''
-        self.roads.append(road_set)
-
     def draw_map(self):
         pass
 
@@ -627,41 +539,3 @@ class Workmap:
                 for j in range(100):
                     if line[j] == '#':  # 障碍
                         self.map_gray[i][j] = self.BLOCK
-
-
-if __name__ == '__main__':
-    # map_gray = [[0]*50 for _ in range(50)]
-    # import matplotlib.pyplot as plt
-    #
-    # map_gray[1] = [100]*50
-    # map_gray[2] = [50]*50
-    #
-    # plt.imshow(map_gray)
-    # plt.show(block=False)
-    import matplotlib.pyplot as plt
-
-    workbenchs: List[Workbench] = []  # 工作台列表
-    workmap = Workmap(debug=True)
-    workmap.read_map_directly("../maps/4.txt")
-    workmap.init_roads()
-    workmap.gen_paths()
-    for idx, w2w in enumerate(workmap.workbench2workbench()):
-        workbenchs[idx].target_workbench_list = w2w
-    astar = AStar(workmap)
-    start = np.array([25.25, 49.75])
-    # goal = (18.75, 49.75)
-    T1 = time.time()
-
-    path = workmap.get_float_path(start, 1)
-    T2 = time.time()
-    print(T2 - T1)
-    img = workmap.map_gray
-    img = np.array(img).astype('uint8')
-    plt.imshow(img)
-    plt.title("img")
-    plt.show()
-
-    fig = plt.figure()
-    plt.plot(path[:, 0], path[:, 1])
-    plt.show()
-    pass

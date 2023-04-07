@@ -4,9 +4,6 @@ from typing import Optional, List, Tuple
 工作台类
 '''
 
-# import logging
-
-# logging.basicConfig(filename='log.log', level=logging.DEBUG)
 class Workbench:
     ITEMS_BUY = [0, 3000, 4400, 5800, 15400, 17200, 19200, 76000]  # 每个物品的购买价
     ITEMS_SELL = [0, 6000, 7600, 9200, 22500, 25000, 27500, 105000]
@@ -64,7 +61,6 @@ class Workbench:
         检测原材料是否已放置
         True表示已有材料
         '''
-        # logging.info(f'WorkbenchID: {self.ID}, self.material: {self.material} mateial_ID: {mateial_ID} res:{1 << mateial_ID & self.material != 0}')
         return 1 << mateial_ID & self.material != 0
 
     def check_material_pro(self, mateial_ID: int) -> bool:
@@ -72,7 +68,6 @@ class Workbench:
         检测原材料格子是否已被预订
         True表示已有材料
         '''
-        # logging.info(f'WorkbenchID: {self.ID}, self.material_pro: {self.material_pro} mateial_ID: {mateial_ID} res:{1 << mateial_ID & self.material_pro != 0}')
         return 1 << mateial_ID & self.material_pro != 0
 
     def pro_sell(self,  mateial_ID: int, sell=True) -> bool:
@@ -111,5 +106,4 @@ class Workbench:
 
     def update(self, s: str):
         # 根据判题器传来的状态修订本机状态
-        # logging.info(f'本地工作台坐标：{self.loc} 判题器坐标f{s.split()[1:3]}')
         self.product_time, self.material, self.product_status = map(int, s.split()[3:])
