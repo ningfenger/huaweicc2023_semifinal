@@ -16,7 +16,6 @@ except:
     pass
 
 
-
 def finish():
     print('OK')
     sys.stdout.flush()
@@ -24,7 +23,7 @@ def finish():
 
 if __name__ == '__main__':
     workmap = Workmap()
-    robots: List[Robot]= []  # 机器人列表
+    robots: List[Robot] = []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
     # 读入初始化地图
     for t, loc in workmap.read_map():
@@ -36,22 +35,19 @@ if __name__ == '__main__':
     for idx, r2w in enumerate(workmap.robot2workbench()):
         robots[idx].target_workbench_list = r2w
     for idx, w2w in enumerate(workmap.workbench2workbench()):
-        workbenchs[idx].target_workbench_list = w2w 
+        workbenchs[idx].target_workbench_list = w2w
     # 计算一下路径
     workmap.gen_paths()
-    # workmap.draw_map()
-    # print(time.time()-t1)
-    # r_idx = 1
-    # for target_workbench in robots[r_idx].target_workbench_list:
-    #     path = workmap.get_path(robots[r_idx].loc, target_workbench)
-    #     workmap.draw_path(path)
-    # path = workmap.get_float_path(robots[r_idx].loc, robots[r_idx].target_workbench_list[0])
-    # # 测试路径，非正式决策路径
-    # robots[r_idx].path = np.array(path)
-    # robots[r_idx].status = Robot.MOVE_TO_BUY_STATUS
-    # 测试路径，非正式决策路径
-    # time.sleep(10)
     controller = Controller(robots, workbenchs, workmap)
+    # 针对性调参
+    if workmap.map_data[30][0] == '#' and workmap.map_data[75][5] == '8' and workmap.map_data[41][-6] == '3':
+        controller.set_control_parameters(5, 2, 1.2, 0.6)
+    elif workmap.map_data[25][50] == '6' and workmap.map_data[41][26] == '5' and workmap.map_data[80][65] == '8':
+        controller.set_control_parameters(5, 2, 1.2, 0.6)
+    elif workmap.map_data[53][56] == '4' and workmap.map_data[58][53] == '7' and workmap.map_data[89][4] == '9':
+        controller.set_control_parameters(5, 2, 1.2, 0.6)
+    elif workmap.map_data[2][3] == '6' and workmap.map_data[22][4] == '2' and workmap.map_data[90][-4] == '5':
+        controller.set_control_parameters(5, 2, 1.2, 0.6)
     finish()
 
     while True:

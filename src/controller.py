@@ -53,6 +53,19 @@ class Controller:
         self.buy_list = []  # 执行过出售操作的机器人列表
         self.sell_list = []  # 执行过购买操作的机器人列表
 
+    def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
+        '''
+        设置参数， 建议取值范围:
+        move_speed: 3-5 估算移动时间
+        max_wait: 1-5 最大等待时间
+        sell_weight: 1-2 优先卖给格子被部分占用的
+        sell_debuff: 0.5-1 将456卖给9的惩罚因子
+        '''
+        self.MOVE_SPEED = 50 * 0.5 / move_speed  # 估算移动时间
+        self.MAX_WAIT = max_wait * 50  # 最大等待时间
+        self.SELL_WEIGHT = sell_weight  # 优先卖给格子被部分占用的
+        self.SELL_DEBUFF = sell_debuff  # 将456卖给9的惩罚因子
+
     def dis2target(self, idx_robot):
         idx_workbench = self.robots[idx_robot].target
         w_loc = self.workbenchs[idx_workbench].loc
@@ -601,13 +614,6 @@ class Controller:
 
         return target_point, idx_point
 
-    def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
-        # 设置参数
-        self.MOVE_SPEED = move_speed  # 估算移动时间
-        self.MAX_WAIT = max_wait  # 最大等待时间
-        self.SELL_WEIGHT = sell_weight  # 优先卖给格子被部分占用的
-        self.SELL_DEBUFF = sell_debuff  # 将456卖给9的惩罚因子
-
     def path_opt(self, idx_robot):
         for point in self.robots[idx_robot].path:
             row, col = 100 - int(point[1] * 2 - 0.5), int(point[0] * 2 - 0.5)
@@ -859,7 +865,7 @@ class Controller:
                     if other_dis2workbench > self.WILL_HUQ_DIS:
                         continue
                     # 买的让卖的
-                    if  status_other in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
+                    if status_other in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
                         sb_flag = True
                     # 同买, 近的让远的
                     elif status_other in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
@@ -880,13 +886,13 @@ class Controller:
                 huq_dis2workbench = self.dis2target(idx_huq)
                 if robot_target == self.robots[idx_huq].target:
                     # 我买对方卖
-                    if  robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS] and status_huq in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
+                    if robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS] and status_huq in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
                         priority_idx = idx_robot
                     # 我卖对方买
                     elif robot.status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS] and status_huq in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
                         priority_idx = idx_huq
                     # 同买同卖
-                    else :
+                    else:
                         if dis2workbench > huq_dis2workbench:
                             priority_idx = idx_robot
                         elif dis2workbench < huq_dis2workbench:
@@ -1088,7 +1094,7 @@ class Controller:
         # other_frame_reman = self.robots[idx_other].get_frame_reman(
         #             )
             '''
-            if len(avoid_path1) > len(avoid_path2): 
+            if len(avoid_path1) > len(avoid_path2):
                 avoid_robot = robot2_idx
                 avoid_path = avoid_path2
             elif len(avoid_path1) < len(avoid_path2):
