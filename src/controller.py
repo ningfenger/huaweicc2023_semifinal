@@ -14,7 +14,6 @@ import copy
 控制类 决策，运动
 '''
 
-
 class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5

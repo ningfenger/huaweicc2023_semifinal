@@ -64,6 +64,11 @@ if __name__ == '__main__':
         controller.set_control_parameters(5, 2, 1.2, 0.6)
     elif workmap.map_data[2][3] == '6' and workmap.map_data[22][4] == '2' and workmap.map_data[90][-4] == '5':
         controller.set_control_parameters(5, 2, 1.2, 0.6)
+
+    #设置超参
+    controller.set_control_parameters(
+        args.move_speed, args.max_wait_mul, args.sell_weight, args.sell_debuff)
+    
     finish()
 
     while True:
