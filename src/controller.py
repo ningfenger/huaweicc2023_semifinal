@@ -14,12 +14,13 @@ import copy
 控制类 决策，运动
 '''
 
+
 class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
     MOVE_SPEED_MUL = 5
-    MOVE_SPEED = 50 * 0.5 / MOVE_SPEED_MUL   # 因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MOVE_SPEED = 50 * 0.5 / MOVE_SPEED_MUL  # 因为每个格子0.5, 所以直接用格子数乘以它就好了
     MAX_WAIT_MUL = 1.5
     MAX_WAIT = MAX_WAIT_MUL * 50  # 最大等待时间
     SELL_WEIGHT = 1.6  # 优先卖给格子被部分占用的
@@ -82,7 +83,7 @@ class Controller:
         """
         for robot in self.robots:
             frame_diff_to_detect = self.FRAME_DIFF_TO_DETECT_DEADLOCK + \
-                random.randint(5, 30)
+                                   random.randint(5, 30)
             distance = np.sqrt(
                 np.sum(np.square(robot.loc_np - robot.pre_position)))
             toward_diff = abs(robot.toward - robot.pre_toward)
@@ -227,7 +228,7 @@ class Controller:
                 # 3 4 象限
                 y_set_ygrid = np.arange(raw, max(raw - 3, 0), -1) * 0.5
             x_set_ygrid = 1 / np.tan(theta) * \
-                (y_set_ygrid - point[1]) + point[0]
+                          (y_set_ygrid - point[1]) + point[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -253,7 +254,7 @@ class Controller:
 
         mask = np.zeros_like(x_set_mid, dtype=bool)
         mask[(x_set_mid >= 0) & (x_set_mid <= 50) & (
-            y_set_mid >= 0) & (y_set_mid <= 50)] = True
+                y_set_mid >= 0) & (y_set_mid <= 50)] = True
         x_set_mid = x_set_mid[mask]
         y_set_mid = y_set_mid[mask]
         idx_ob = -1
@@ -330,7 +331,7 @@ class Controller:
                 y_set_ygrid = np.arange(
                     raw, max(raw - max_num - 1, -1), -1) * 0.5
             x_set_ygrid = 1 / np.tan(theta) * \
-                (y_set_ygrid - loc0[1]) + loc0[0]
+                          (y_set_ygrid - loc0[1]) + loc0[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -368,7 +369,7 @@ class Controller:
                 y = y_set_mid[i_point]
                 raw, col = tools.cor2rc(x, y)
                 if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[
-                        raw, col] < Workmap.SUPER_BROAD_ROAD:
+                    raw, col] < Workmap.SUPER_BROAD_ROAD:
                     return False
                 # if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0 or self.m_map_arr[raw, col] == 2:
                 #     # 障碍物
@@ -380,7 +381,7 @@ class Controller:
                 y = y_set_mid[i_point]
                 raw, col = tools.cor2rc(x, y)
                 if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[
-                        raw, col] < Workmap.BROAD_ROAD or (raw, col) in self.m_map.broad_shifting:
+                    raw, col] < Workmap.BROAD_ROAD or (raw, col) in self.m_map.broad_shifting:
                     return False
                 # if raw <= -1 or raw >= 100 or col <= -1 or col >= 100 or self.m_map_arr[raw, col] == 0:
                 #     # 障碍物
@@ -451,7 +452,7 @@ class Controller:
                 y_set_ygrid = np.arange(
                     raw, max(raw - max_num - 1, -1), -1) * 0.5
             x_set_ygrid = 1 / np.tan(theta) * \
-                (y_set_ygrid - loc0[1]) + loc0[0]
+                          (y_set_ygrid - loc0[1]) + loc0[0]
             x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
             y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
 
@@ -566,14 +567,14 @@ class Controller:
         theta_r_set = theta_set - math.pi / 2
 
         robot_loc_l = robot_loc_m + width * \
-            np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
+                      np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
         robot_loc_r = robot_loc_m + width * \
-            np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
+                      np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
 
         path_loc_l = path_loc_m + width * \
-            np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
+                     np.concatenate((np.cos(theta_l_set), np.sin(theta_l_set)), axis=1)
         path_loc_r = path_loc_m + width * \
-            np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
+                     np.concatenate((np.cos(theta_r_set), np.sin(theta_r_set)), axis=1)
         len_path = path_loc_m.shape[0]
         detect_m = np.full(len_path, False)
         detect_l = np.full(len_path, False)
@@ -688,6 +689,51 @@ class Controller:
         # 判断是否同时到终点僵持
         return d
 
+    def direct_colli(self, idx_robot, idx_other, thr_dis=4, thr_theta=math.pi / 5):
+        robot_this = self.robots[idx_robot]
+        robot_other = self.robots[idx_other]
+
+        raw, col = self.m_map.loc_float2int(*robot_this.loc)
+
+        # 要在大空地 且 离目标工作台足够远
+        if self.m_map_arr[raw, col] == Workmap.SUPER_BROAD_ROAD and self.dis2target(idx_robot) > 5:
+
+            loc_this = np.array(robot_this.loc)
+            loc_other = np.array(robot_other.loc)
+            vec_this2other = loc_other - loc_this
+            vec_other2this = loc_this - loc_other
+
+            dis = np.sqrt(np.dot(vec_this2other, vec_this2other))
+
+            # 距离要足够近
+            if dis < thr_dis:
+                #############################
+                # 本机器人头朝向
+                theta_toward_this = robot_this.toward
+
+                # 本机器人速度朝向
+                speed_vec_this = np.array(robot_this.speed)
+                theta_speed_this = np.arctan2(speed_vec_this[1], speed_vec_this[0])
+
+                # 本机器人 对方相对于自身朝向
+                theta_robot_this = np.arctan2(vec_this2other[1], vec_this2other[0])
+
+                #############################
+                # 其他机器人头朝向
+                theta_toward_other = robot_other.toward
+
+                # 其他机器人速度朝向
+                speed_vec_other = np.array(robot_other.speed)
+                theta_speed_other = np.arctan2(speed_vec_other[1], speed_vec_other[0])
+
+                # 其他机器人 自身相对于对方朝向
+                theta_robot_other = np.arctan2(vec_other2this[1], vec_other2this[0])
+
+                # 撞向对方的可能
+                if max(abs(theta_toward_this - theta_robot_this), abs(theta_speed_this - theta_robot_this), abs(theta_toward_other - theta_robot_other), abs(theta_speed_other - theta_robot_other)) < thr_theta:
+                    return True
+            return False
+
     def AF(self, loc_robot):
         row, col = self.m_map.loc_float2int(loc_robot[0], loc_robot[1])
         row_start = max(row - 2, 0)
@@ -705,7 +751,7 @@ class Controller:
                         theta = tools.np_theta(loc_obt, loc_robot)
 
                         offset = offset + 0.5 * \
-                            np.array([np.cos(theta), np.cos(theta)])
+                                 np.array([np.cos(theta), np.cos(theta)])
         # sys.stderr.write(f"势场修正:{offset[0]},{offset[1]}\n")
         return offset
 
@@ -715,7 +761,7 @@ class Controller:
             new_row = row + row_offset
             new_col = col + col_offset
             if new_col < 0 or new_col > 99 or new_row < 0 or new_row > 99 or self.m_map.map_gray[new_row][
-                    new_col] == Workmap.BLOCK:
+                new_col] == Workmap.BLOCK:
                 return False
         return True
 
@@ -726,7 +772,7 @@ class Controller:
             new_row = row + row_offset
             new_col = col + col_offset
             if new_col < 0 or new_col > 99 or new_row < 0 or new_col > 99 or self.m_map.map_gray[new_row][
-                    new_col] == Workmap.BLOCK:
+                new_col] == Workmap.BLOCK:
                 count += 1
         return count
 
@@ -786,10 +832,12 @@ class Controller:
         # 初始化一个较大值
         other_dis2workbench = self.WILL_HUQ_DIS
 
-        if dis2workbench < self.WILL_HUQ_DIS and not col_flag and robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
+        if dis2workbench < self.WILL_HUQ_DIS and not col_flag and robot.status in [Robot.MOVE_TO_BUY_STATUS,
+                                                                                   Robot.WAIT_TO_BUY_STATUS]:
             for idx_other in range(4):
                 # 锐总说这不合适吧
-                if (not idx_other == idx_robot) and self.robots[idx_other].frame_wait == 0 and robot_target == self.robots[idx_other].target:
+                if (not idx_other == idx_robot) and self.robots[idx_other].frame_wait == 0 and robot_target == \
+                        self.robots[idx_other].target:
                     # 另一个机器人到工作台的距离
                     other_dis2workbench = self.dis2target(idx_other)
                     status_other = self.robots[idx_other].status
@@ -817,10 +865,12 @@ class Controller:
                 huq_dis2workbench = self.dis2target(idx_huq)
                 if robot_target == self.robots[idx_huq].target:
                     # 我买对方卖
-                    if robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS] and status_huq in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
+                    if robot.status in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS] and status_huq in [
+                        Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS]:
                         priority_idx = idx_robot
                     # 我卖对方买
-                    elif robot.status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS] and status_huq in [Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
+                    elif robot.status in [Robot.MOVE_TO_SELL_STATUS, Robot.WAIT_TO_SELL_STATUS] and status_huq in [
+                        Robot.MOVE_TO_BUY_STATUS, Robot.WAIT_TO_BUY_STATUS]:
                         priority_idx = idx_huq
                     # 同买同卖
                     else:
@@ -865,6 +915,14 @@ class Controller:
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
+
+
+        # for idx_other in range(4):
+        #     if not idx_other == idx_robot:
+        #         if self.direct_colli(idx_robot, idx_other):
+        #             delta_theta -= math.pi / 5
+        #             sys.stderr.write("direct avoid")
+        #             break
 
         delta_theta = (delta_theta +
                        math.pi) % (2 * math.pi) - math.pi
@@ -1167,7 +1225,7 @@ class Controller:
                                 self.starve[robot.item_type] -= 1
                             else:
                                 self.starve[Workbench.WORKSTAND_STARVE[workbench_sell.material + (
-                                    1 << robot.item_type)]] += 1
+                                        1 << robot.item_type)]] += 1
                             # sys.stderr.write(f"material: {self.starve}\n")
                         # 取消预定
                         sell_out_list.append(idx_robot)
