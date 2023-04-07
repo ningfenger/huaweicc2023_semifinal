@@ -23,6 +23,22 @@ def finish():
 
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='华为软件精英挑战赛2023 调参版')
+    parser.add_argument('--move_speed', default=10, type=float, help='估算移动速度')
+    parser.add_argument('--max_wait_mul', default=1.5,
+                        type=float, help='最大等待帧数')
+    parser.add_argument('--sell_weight',
+                        default=1.6, type=float, help='优先456中最少的权重')
+    parser.add_argument('--sell_debuff', default=0.6,
+                        type=float, help='优先7生产权重')
+
+    # parser.add_argument('--train', action="store_true", help='是否是训练模式')
+    args = parser.parse_args()
+    Controller.MOVE_SPEED_MUL = args.move_speed
+    Controller.MAX_WAIT_MUL = args.max_wait_mul
+    Controller.SELL_WEIGHT = args.sell_weight
+    Controller.SELL_DEBUFF = args.sell_debuff
     workmap = Workmap()
     robots: List[Robot]= []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
@@ -55,12 +71,15 @@ if __name__ == '__main__':
     finish()
 
     while True:
-        frame_id, money = map(int, input().split())
-        input()  # 工作台数量
-        for workbench in workbenchs:  # 更新工作台
-            workbench.update(input())
-        for robot in robots:  # 更新机器人
-            robot.update(input())
-        OK_str = input()  # 读一个ok
-        controller.control(frame_id, money)
-        finish()
+        try:
+            frame_id, money = map(int, input().split())
+            input()  # 工作台数量
+            for workbench in workbenchs:  # 更新工作台
+                workbench.update(input())
+            for robot in robots:  # 更新机器人
+                robot.update(input())
+            OK_str = input()  # 读一个ok
+            controller.control(frame_id, money)
+            finish()
+        except Exception:
+            break
