@@ -19,11 +19,13 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED = 1 / 5 * 50 * 2  # 除以2是因为每个格子0.5, 所以直接用格子数乘以它就好了
-    MAX_WAIT = 1.5 * 50  # 最大等待时间
+    MOVE_SPEED = 5
+    MOVE_SPEED = 50 * 0.5 / MOVE_SPEED   # 因为每个格子0.5, 所以直接用格子数乘以它就好了
+    MAX_WAIT = 1.5
+    MAX_WAIT *= 50  # 最大等待时间
     SELL_WEIGHT = 1.6  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.6  # 非 7 卖给89的惩罚
-    CONSERVATIVE = 1 + 1 / MOVE_SPEED * 0  # 保守程度 最后时刻要不要操作
+    CONSERVATIVE = 1 + 1 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
     STARVE_WEIGHT = SELL_WEIGHT
 
     FRAME_DIFF_TO_DETECT_DEADLOCK = 20  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
