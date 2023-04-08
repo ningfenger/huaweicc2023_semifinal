@@ -51,7 +51,7 @@ class Robot:
         self.frame_reman_sell = 0  # 预计多久能卖任务
         # 路径追踪的临时点
         self.temp_target = None
-
+        self.last_target = -1 # 记录上一个目标，解除死锁用
         self.temp_idx = None
 
     def get_frame_reman(self):

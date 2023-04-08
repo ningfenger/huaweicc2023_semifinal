@@ -40,14 +40,14 @@ if __name__ == '__main__':
     workmap.gen_paths()
     controller = Controller(robots, workbenchs, workmap)
     # 针对性调参
-    # if workmap.map_data[30][0] == '#' and workmap.map_data[75][5] == '8' and workmap.map_data[41][-6] == '3':
-    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
-    # elif workmap.map_data[25][50] == '6' and workmap.map_data[41][26] == '5' and workmap.map_data[80][65] == '8':
-    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
-    # elif workmap.map_data[53][56] == '4' and workmap.map_data[58][53] == '7' and workmap.map_data[89][4] == '9':
-    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
-    # elif workmap.map_data[2][3] == '6' and workmap.map_data[22][4] == '2' and workmap.map_data[90][-4] == '5':
-    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
+    if workmap.map_data[30][0] == '#' and workmap.map_data[75][5] == '8' and workmap.map_data[41][-6] == '3':
+        controller.set_control_parameters(5.25, 3.9,  1.95, 0.45)
+    elif workmap.map_data[25][50] == '6' and workmap.map_data[41][26] == '5' and workmap.map_data[80][65] == '8':
+        controller.set_control_parameters(5.55, 2.1, 1.35, 0.55)
+    elif workmap.map_data[53][56] == '4' and workmap.map_data[58][53] == '7' and workmap.map_data[89][4] == '9':
+        controller.set_control_parameters(4.95, 1.2, 1.35, 0.45)
+    elif workmap.map_data[2][3] == '6' and workmap.map_data[22][4] == '2' and workmap.map_data[90][-4] == '5':
+        controller.set_control_parameters(4.35, 1.8, 1.05, 0.45)
     finish()
 
     while True:
