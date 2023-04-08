@@ -31,6 +31,12 @@ if __name__ == '__main__':
                         default=1.6, type=float, help='优先456中最少的权重')
     parser.add_argument('--sell_debuff', default=0.6,
                         type=float, help='优先7生产权重')
+    parser.add_argument('--thr_dis', default=5.5,
+                        type=float, help='对撞检测距离')
+    parser.add_argument('--thr_theta', default=5,
+                        type=float, help='对撞检测角度')
+    parser.add_argument('--theta_rotate', default=5,
+                        type=float, help='对撞躲避角度')
 
     # parser.add_argument('--train', action="store_true", help='是否是训练模式')
     args = parser.parse_args()
@@ -38,6 +44,10 @@ if __name__ == '__main__':
     Controller.MAX_WAIT_MUL = args.max_wait_mul
     Controller.SELL_WEIGHT = args.sell_weight
     Controller.SELL_DEBUFF = args.sell_debuff
+    Controller.THR_DIS = args.thr_dis
+    Controller.THR_THETA = args.thr_theta
+    Controller.THETA_ROTATE = args.theta_rotate
+
     workmap = Workmap()
     robots: List[Robot] = []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
@@ -56,14 +66,14 @@ if __name__ == '__main__':
     workmap.gen_paths()
     controller = Controller(robots, workbenchs, workmap)
     # 针对性调参
-    if workmap.map_data[30][0] == '#' and workmap.map_data[75][5] == '8' and workmap.map_data[41][-6] == '3':
-        controller.set_control_parameters(5, 2, 1.2, 0.6)
-    elif workmap.map_data[25][50] == '6' and workmap.map_data[41][26] == '5' and workmap.map_data[80][65] == '8':
-        controller.set_control_parameters(5, 2, 1.2, 0.6)
-    elif workmap.map_data[53][56] == '4' and workmap.map_data[58][53] == '7' and workmap.map_data[89][4] == '9':
-        controller.set_control_parameters(5, 2, 1.2, 0.6)
-    elif workmap.map_data[2][3] == '6' and workmap.map_data[22][4] == '2' and workmap.map_data[90][-4] == '5':
-        controller.set_control_parameters(5, 2, 1.2, 0.6)
+    # if workmap.map_data[30][0] == '#' and workmap.map_data[75][5] == '8' and workmap.map_data[41][-6] == '3':
+    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
+    # elif workmap.map_data[25][50] == '6' and workmap.map_data[41][26] == '5' and workmap.map_data[80][65] == '8':
+    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
+    # elif workmap.map_data[53][56] == '4' and workmap.map_data[58][53] == '7' and workmap.map_data[89][4] == '9':
+    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
+    # elif workmap.map_data[2][3] == '6' and workmap.map_data[22][4] == '2' and workmap.map_data[90][-4] == '5':
+    #     controller.set_control_parameters(5, 2, 1.2, 0.6)
 
 
     #设置超参

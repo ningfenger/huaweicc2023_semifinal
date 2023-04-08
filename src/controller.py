@@ -27,6 +27,10 @@ class Controller:
     SELL_DEBUFF = 0.6  # 非 7 卖给89的惩罚
     CONSERVATIVE = 1 + 1 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
     STARVE_WEIGHT = SELL_WEIGHT
+    THR_DIS = 5.5
+    THR_THETA = 5
+    THETA_ROTATE = 5
+    # 运动控制参数
 
     FRAME_DIFF_TO_DETECT_DEADLOCK = 20  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
     FRAME_DIFF = 10  # 单位为帧
@@ -53,19 +57,24 @@ class Controller:
         self.buy_list = []  # 执行过出售操作的机器人列表
         self.sell_list = []  # 执行过购买操作的机器人列表
 
-    def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
+    def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float, thr_dis, thr_theta, theta_rotate):
         '''
         设置参数， 建议取值范围:
         move_speed: 3-5 估算移动时间
         max_wait: 1-5 最大等待时间
         sell_weight: 1-2 优先卖给格子被部分占用的
         sell_debuff: 0.5-1 将456卖给9的惩罚因子
+        thr_dis: 4-8 对撞检测距离
+        thr_theta: 4-10 对撞检测角度
+        theta_rotate: 4-10 对撞躲避角度
         '''
         self.MOVE_SPEED = 50 * 0.5 / move_speed  # 估算移动时间
         self.MAX_WAIT = max_wait * 50  # 最大等待时间
         self.SELL_WEIGHT = sell_weight  # 优先卖给格子被部分占用的
         self.SELL_DEBUFF = sell_debuff  # 将456卖给9的惩罚因子
-
+        self.THR_DIS = thr_dis
+        self.THR_THETA = thr_theta
+        self.THETA_ROTATE = theta_rotate
     def dis2target(self, idx_robot):
         idx_workbench = self.robots[idx_robot].target
         w_loc = self.workbenchs[idx_workbench].loc
@@ -919,8 +928,8 @@ class Controller:
 
         for idx_other in range(4):
             if not idx_other == idx_robot:
-                if self.direct_colli(idx_robot, idx_other, thr_dis=6):
-                    delta_theta -= math.pi / 5
+                if self.direct_colli(idx_robot, idx_other, thr_dis=self.THR_DIS, thr_theta=math.pi/self.THR_THETA):
+                    delta_theta -= math.pi / self.THETA_ROTATE
                     sys.stderr.write("direct avoid\n")
                     break
 
