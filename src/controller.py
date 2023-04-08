@@ -1096,7 +1096,6 @@ class Controller:
                 else:
                     self.set_robot_state_undeadlock(idx_robot, frame_id)
                     avoid_idx, avoid_path = self.process_deadlock(idx_robot, robot.anoter_robot)
-                    # 虽然这里写错了，但是按照这个效果更好，我也没有办法
                     robot.status = robot.last_status
                     if avoid_idx == idx_robot:
                         robot.set_path(avoid_path)
