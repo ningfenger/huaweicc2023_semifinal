@@ -25,7 +25,7 @@ class Controller:
     MAX_WAIT = MAX_WAIT_MUL * 50  # 最大等待时间
     SELL_WEIGHT = 1.85  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.55 # 非 7 卖给89的惩罚
-    CONSERVATIVE = 1 + 1 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
+    CONSERVATIVE = 1 + 2 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
     STARVE_WEIGHT = SELL_WEIGHT
 
     FRAME_DIFF_TO_DETECT_DEADLOCK = 20  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
@@ -778,7 +778,7 @@ class Controller:
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
 
-
+        # 不确定用处大不大，暂时保留
         # for idx_other in range(4):
         #     if not idx_other == idx_robot:
         #         if self.direct_colli(idx_robot, idx_other, thr_dis=6):
@@ -980,12 +980,14 @@ class Controller:
             robot2.last_status = robot2.status
             robot1.status = Robot.AVOID_CLASH
             robot2.status = Robot.AVOID_CLASH
+            robot1.anoter_robot = robot2_idx
+            robot2.anoter_robot = robot1_idx
             robot1.frame_backword = 30
             robot2.frame_backword = 30
-            if random.randint(1, 2) == 1:
-                robot1.frame_wait = random.randint(3, 5) * 30
-            else:
-                robot2.frame_wait = random.randint(3, 5) * 30
+            # if random.randint(1, 2) == 1:
+            #     robot1.frame_wait = random.randint(3, 5) * 30
+            # else:
+            #     robot2.frame_wait = random.randint(3, 5) * 30
 
     def control(self, frame_id: int, money: int):
         self.process_long_deadlock(frame_id)
@@ -1091,11 +1093,12 @@ class Controller:
                 if robot.frame_backword > 0:
                     robot.forward(-2)
                     robot.frame_backword -= 1
-                elif robot.frame_wait > 0:
-                    robot.forward(0)
-                    robot.frame_wait -= 1
                 else:
                     self.set_robot_state_undeadlock(idx_robot, frame_id)
+                    avoid_idx, avoid_path = self.process_deadlock(idx_robot, robot.anoter_robot)
+                    if avoid_idx == idx_robot:
+                        robot.set_path(avoid_path)
+                        robot.frame_wait = self.AVOID_FRAME_WAIT
                     robot.status = robot.last_status
                     self.re_path(robot)
 

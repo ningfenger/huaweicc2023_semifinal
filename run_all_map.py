@@ -19,10 +19,10 @@ def run_a_map(cmd, map_ID):
 
 if __name__ == '__main__':
     total_score = 0
-    for map_ID in range(1, 5):
+    for map_ID in range(1, 4):
         cmd = f'{Robot} "python src/main.py" -f -m maps/{map_ID}.txt'
         threading.Thread(target=run_a_map, args=(cmd, map_ID)).start()
-    for _ in range(4):
+    for _ in range(3):
         map_ID, score = results.get()
         print(f"地图{map_ID}得分为: {score}")
         total_score += score
