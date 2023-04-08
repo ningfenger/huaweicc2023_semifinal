@@ -104,13 +104,17 @@ def particle_swarm_optimization(x_min, x_max, v_min, v_max, num_particles, num_i
                 running_processes -= 1
                 end_processes += 1
                 particles[end_idx].temp_fitness = score
+                print('======================================')
                 print(f"params:{particles[end_idx].position}, score:{particles[end_idx].temp_fitness}")
+                print(f"best_params:{global_best_position}, best_score:{global_best_fitness}")
+                print('======================================')
         while end_processes < num_particles:
             end_idx, score = results.get()
             end_processes += 1
             particles[end_idx].temp_fitness = score
         for particle in particles:
             # 可以加个log
+
             # 并行
             particle.evaluate_fitness()
             if particle.best_fitness > global_best_fitness:
@@ -138,8 +142,8 @@ if __name__ == '__main__':
     x_max = [5, 5, 2, 1, 8, 10, 10]  # x1到x7的最大值
     v_min = [-0.1, -0.1, -0.1, -0.1, -0.1, -0.1, -0.1]  # 速度的最小值
     v_max = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]  # 速度的最大值
-    num_particles = 4  # 粒子数量
-    num_iterations = 1  # 迭代次数
+    num_particles = 50  # 粒子数量
+    num_iterations = 20  # 迭代次数
     w = 0.5  # 惯性权重
     c1 = 1.5  # 个体学习因子
     c2 = 1.5  # 全局学习因子
