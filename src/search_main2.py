@@ -14,7 +14,7 @@ max_wait = np.arange(1.2, 2, 0.1)
 sell_weight = np.arange(1, 2, 0.1)
 sell_debuff = np.arange(0.4, 1, 0.1)
 python = "python"  # 怎么调用python
-works = 1  # 最多取cpu个数的一半
+works = 4  # 最多取cpu个数的一半
 import threading
 
 results = Queue()
@@ -38,10 +38,11 @@ def run_a_process(params, idx):
           f'--thr_dis {params[4]} ' \
           f'--thr_theta {params[5]} ' \
           f'--theta_rotate {params[6]}" ' \
-          f'-f -d -m {map_file}'
+          f'-f -m {map_file}'
     print(cmd)
     res = os.popen(cmd).readlines()[-1]
     score = eval(res)['score']
+    # print(res)
     results.put((idx, score))
 
 
@@ -89,16 +90,21 @@ def particle_swarm_optimization(x_min, x_max, v_min, v_max, num_particles, num_i
     for _ in range(num_iterations):
         running_processes = 0
         end_processes = 0
-        for idx, particle in enumerate(particles):
+        idx = 0
+        while idx < num_particles:
+            print(f"idx:{idx}\n")
             if running_processes < works:
+                particle = particles[idx]
                 threading.Thread(target=run_a_process, args=(particle.position[:], idx)).start()
+                # run_a_process(particle.position[:], idx)
                 running_processes += 1
+                idx+=1
             else:
                 end_idx, score = results.get()
                 running_processes -= 1
                 end_processes += 1
                 particles[end_idx].temp_fitness = score
-                print(f"params:{particle.position}, score:{particle.temp_fitness}")
+                print(f"params:{particles[end_idx].position}, score:{particles[end_idx].temp_fitness}")
         while end_processes < num_particles:
             end_idx, score = results.get()
             end_processes += 1

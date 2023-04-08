@@ -930,7 +930,7 @@ class Controller:
             if not idx_other == idx_robot:
                 if self.direct_colli(idx_robot, idx_other, thr_dis=self.THR_DIS, thr_theta=math.pi/self.THR_THETA):
                     delta_theta -= math.pi / self.THETA_ROTATE
-                    sys.stderr.write("direct avoid\n")
+                    # sys.stderr.write("direct avoid\n")
                     break
 
         delta_theta = (delta_theta +
