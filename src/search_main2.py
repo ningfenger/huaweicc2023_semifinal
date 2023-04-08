@@ -5,7 +5,7 @@ import numpy as np
 from queue import Queue
 import os
 import time
-
+import csv
 map_file = "maps/1.txt"
 # maps = [ "./maps/2.txt"]
 # 参数范围
@@ -15,6 +15,8 @@ sell_weight = np.arange(1, 2, 0.1)
 sell_debuff = np.arange(0.4, 1, 0.1)
 python = "python"  # 怎么调用python
 works = 4  # 最多取cpu个数的一半
+csv_flie = "record.csv"
+
 import threading
 
 results = Queue()
@@ -34,7 +36,7 @@ def run_a_process(params, idx):
           f'--move_speed {params[0]} ' \
           f'--max_wait_mul {params[1]} ' \
           f'--sell_weight {params[2]} ' \
-          f'--sell_debuff {params[3]} ' \
+          f'--sell_debuff {params[3]}" ' \
           f'-f -m {map_file}'
     print(cmd)
     res = os.popen(cmd).readlines()[-1]
@@ -54,8 +56,8 @@ import random
 
 class Particle:
     def __init__(self, x_min, x_max, v_min, v_max):
-        self.position = [random.uniform(x_min[i], x_max[i]) for i in range(7)]
-        self.velocity = [random.uniform(v_min[i], v_max[i]) for i in range(7)]
+        self.position = [random.uniform(x_min[i], x_max[i]) for i in range(4)]
+        self.velocity = [random.uniform(v_min[i], v_max[i]) for i in range(4)]
         self.best_position = self.position
         self.best_fitness = float('-inf')
         self.temp_fitness = float('-inf')
@@ -109,20 +111,34 @@ def particle_swarm_optimization(x_min, x_max, v_min, v_max, num_particles, num_i
             end_idx, score = results.get()
             end_processes += 1
             particles[end_idx].temp_fitness = score
+            print('======================================')
+            print(f"params:{particles[end_idx].position}, score:{particles[end_idx].temp_fitness}")
+            print(f"best_params:{global_best_position}, best_score:{global_best_fitness}")
+            print('======================================')
+        remove_replay()
+        f = open(csv_flie, 'w+', newline='', encoding='utf-8')
         for particle in particles:
-            # 可以加个log
-
-            # 并行
+            csv_w = csv.writer(f)
+            csv_w.writerow(particle.position+[particle.temp_fitness])
+            
             particle.evaluate_fitness()
             if particle.best_fitness > global_best_fitness:
+
                 global_best_position = particle.best_position
                 global_best_fitness = particle.best_fitness
+        f.close()
         for particle in particles:
             particle.update_velocity(global_best_position, w, c1, c2)
             particle.update_position()
 
     return global_best_position, global_best_fitness
 
+def remove_replay():
+    replays = os.listdir("./replay")
+    for replay in replays:
+        replay_path = os.path.join(os.curdir, "replay", replay)
+        os.remove(replay_path)
+    time.sleep(60)
 
 if __name__ == '__main__':
     '''
@@ -139,7 +155,7 @@ if __name__ == '__main__':
     x_max = [5, 5, 2, 1]  # x1到x7的最大值
     v_min = [-0.1, -0.1, -0.1, -0.1]  # 速度的最小值
     v_max = [0.1, 0.1, 0.1, 0.1]  # 速度的最大值
-    num_particles = 50  # 粒子数量
+    num_particles = 5  # 粒子数量
     num_iterations = 20  # 迭代次数
     w = 0.5  # 惯性权重
     c1 = 1.5  # 个体学习因子
