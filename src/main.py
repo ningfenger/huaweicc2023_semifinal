@@ -40,14 +40,6 @@ if __name__ == '__main__':
 
     # parser.add_argument('--train', action="store_true", help='是否是训练模式')
     args = parser.parse_args()
-    Controller.MOVE_SPEED_MUL = args.move_speed
-    Controller.MAX_WAIT_MUL = args.max_wait_mul
-    Controller.SELL_WEIGHT = args.sell_weight
-    Controller.SELL_DEBUFF = args.sell_debuff
-    Controller.THR_DIS = args.thr_dis
-    Controller.THR_THETA = args.thr_theta
-    Controller.THETA_ROTATE = args.theta_rotate
-
     workmap = Workmap()
     robots: List[Robot] = []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
@@ -78,7 +70,8 @@ if __name__ == '__main__':
 
     #设置超参
     controller.set_control_parameters(
-        args.move_speed, args.max_wait_mul, args.sell_weight, args.sell_debuff)
+        args.move_speed, args.max_wait_mul, args.sell_weight,
+        args.sell_debuff, args.thr_dis, args.thr_theta, args.theta_rotate)
     finish()
 
     while True:
