@@ -19,12 +19,12 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED = 5
+    MOVE_SPEED = 4.65
     MOVE_SPEED = 50 * 0.5 / MOVE_SPEED   # 因为每个格子0.5, 所以直接用格子数乘以它就好了
     MAX_WAIT = 1.5
     MAX_WAIT *= 50  # 最大等待时间
-    SELL_WEIGHT = 1.6  # 优先卖给格子被部分占用的
-    SELL_DEBUFF = 0.6  # 非 7 卖给89的惩罚
+    SELL_WEIGHT = 1.85  # 优先卖给格子被部分占用的
+    SELL_DEBUFF = 0.55  # 非 7 卖给89的惩罚
     CONSERVATIVE = 1 + 1 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
     STARVE_WEIGHT = SELL_WEIGHT
 
@@ -52,7 +52,7 @@ class Controller:
         # 预防跳帧使用, 接口先留着
         self.buy_list = []  # 执行过出售操作的机器人列表
         self.sell_list = []  # 执行过购买操作的机器人列表
-
+        self.tmp_avoid = {} # 暂存避让计算结果
     def set_control_parameters(self, move_speed: float, max_wait: int, sell_weight: float, sell_debuff: float):
         '''
         设置参数， 建议取值范围:
@@ -995,6 +995,9 @@ class Controller:
         返回 避让的id及路径
         如果都无路可退 id为-1 建议让两个直接倒车
         '''
+        r1, r2 = min(robot1_idx, robot2_idx), max(robot1_idx, robot2_idx)
+        if (r1, r2) in self.tmp_avoid:
+            return self.tmp_avoid[(r1,r2)]
         robot1, robot2 = self.robots[robot1_idx], self.robots[robot2_idx]
         other_locs = []  # 记录另外两个机器人的坐标
         for idx, robot in enumerate(self.robots):
@@ -1042,6 +1045,7 @@ class Controller:
                     avoid_robot = robot1_idx
                     avoid_path = avoid_path1
         # sys.stderr.write(f"avoid_robot: {avoid_robot} avoid_path{avoid_path}\n")
+        self.tmp_avoid[(r1,r2)] = (avoid_robot, avoid_path)
         return avoid_robot, avoid_path
 
     def process_long_deadlock(self, frame_id):
@@ -1194,6 +1198,7 @@ class Controller:
                     self.re_path(robot)
 
             # 根据状态更新预估时间
+            self.tmp_avoid.clear()
             robot.update_frame_reman()
             idx_robot += 1
         for idx_robot in sell_out_list:
