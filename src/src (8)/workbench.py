@@ -94,8 +94,8 @@ class Workbench:
         sell: True表示预购, False表示取消预购 
         设置成功返回True    
         '''
-        # if self.typeID in [1, 2, 3]:
-        #     return True
+        if self.typeID in [1, 2, 3]:
+            return True
         if buy:
             if self.product_pro:
                 return False

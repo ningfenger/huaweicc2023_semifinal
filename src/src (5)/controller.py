@@ -43,8 +43,6 @@ class Controller:
     # 避让等待的帧数
     AVOID_FRAME_WAIT = 20
 
-    FLAG_HUQ = True
-
     def __init__(self, robots: List[Robot], workbenchs: List[Workbench], m_map: Workmap):
         self.robots = robots
         self.workbenchs = workbenchs
@@ -792,10 +790,10 @@ class Controller:
         if sb_safe_dis:
             # 保持安全车距等待买卖
             print("forward", idx_robot, (d - self.WILL_CLASH_DIS-0.1) * 6)
-        elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2 and self.FLAG_HUQ:
+        elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
             # 角度相差太大倒车走
             print("forward", idx_robot, -2)
-            delta_theta += math.pi
+            # delta_theta += math.pi
         elif abs(delta_theta) > math.pi / 6:
             # 角度相差较大 原地转向
             print("forward", idx_robot, 0)

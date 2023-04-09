@@ -19,13 +19,13 @@ class Controller:
     # 总帧数
     TOTAL_FRAME = 50 * 60 * 5
     # 控制参数
-    MOVE_SPEED_MUL = 4.65
+    MOVE_SPEED_MUL = 4
     MOVE_SPEED = 50 * 0.5 / MOVE_SPEED_MUL  # 因为每个格子0.5, 所以直接用格子数乘以它就好了
-    MAX_WAIT_MUL = 1.5
+    MAX_WAIT_MUL = 3
     MAX_WAIT = MAX_WAIT_MUL * 50  # 最大等待时间
-    SELL_WEIGHT = 1.85  # 优先卖给格子被部分占用的
+    SELL_WEIGHT = 1.5  # 优先卖给格子被部分占用的
     SELL_DEBUFF = 0.55 # 非 7 卖给89的惩罚
-    CONSERVATIVE = 1 + 2 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
+    CONSERVATIVE = 1 + 1 / MOVE_SPEED  # 保守程度 最后时刻要不要操作
     STARVE_WEIGHT = SELL_WEIGHT
 
     FRAME_DIFF_TO_DETECT_DEADLOCK = 20  # 单位为帧,一个机器人 frame_now - pre_frame >这个值时开始检测死锁
@@ -41,9 +41,7 @@ class Controller:
     WILL_HUQ_DIS = 2.5  # 可能冲突的距离
 
     # 避让等待的帧数
-    AVOID_FRAME_WAIT = 20
-
-    FLAG_HUQ = True
+    AVOID_FRAME_WAIT = 50
 
     def __init__(self, robots: List[Robot], workbenchs: List[Workbench], m_map: Workmap):
         self.robots = robots
@@ -792,10 +790,10 @@ class Controller:
         if sb_safe_dis:
             # 保持安全车距等待买卖
             print("forward", idx_robot, (d - self.WILL_CLASH_DIS-0.1) * 6)
-        elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2 and self.FLAG_HUQ:
+        elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2:
             # 角度相差太大倒车走
             print("forward", idx_robot, -2)
-            delta_theta += math.pi
+            # delta_theta += math.pi
         elif abs(delta_theta) > math.pi / 6:
             # 角度相差较大 原地转向
             print("forward", idx_robot, 0)
