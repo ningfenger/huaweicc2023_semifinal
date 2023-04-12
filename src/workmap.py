@@ -368,7 +368,8 @@ class Workmap:
         path_map = {(node_x, node_y): (node_x, node_y)}  # 记录路径
         for robot_loc in robots_loc:
             robot_x, robot_y = self.loc_float2int(*robot_loc)
-            for x, y in self.TURNS + [(0, 0)]:
+            block_turns = self.TURNS + [(0,0)] #+ [(0, 2), (0, -2), (-2, 0), (2, 0)]
+            for x, y in block_turns:
                 block_x, block_y = robot_x + x, robot_y + y
                 if block_x < 0 or block_x > 99 or block_y < 0 or block_y > 99:
                     continue
@@ -381,8 +382,7 @@ class Workmap:
         # 开始找路 直接bfs找一下先看看效果
         while dq:
             node_x, node_y = dq.pop()
-            block_turns = self.TURNS  # + [(0, 2), (0, -2), (-2, 0), (2, 0)]
-            for x, y in block_turns:
+            for x, y in self.TURNS:
                 next_x, next_y = node_x + x, node_y + y
                 if (next_x, next_y) in path_map or next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or \
                         self.map_gray[next_x][next_y] < low_value:

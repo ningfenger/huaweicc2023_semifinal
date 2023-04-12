@@ -669,7 +669,7 @@ class Controller:
             else:
                 self.re_path(robot)
                 # 足够接近时 重新选择
-                if flag_obt_near:
+                if flag_obt_near :
                     target_loc, target_idx = self.select_target(idx_robot)
                 else:
                     target_idx = robot.find_temp_tar_idx()
@@ -795,7 +795,7 @@ class Controller:
         elif abs(delta_theta) > math.pi * 5 / 6 and dis_target < 2 and self.FLAG_HUQ:
             # 角度相差太大倒车走
             print("forward", idx_robot, -2)
-            delta_theta += math.pi
+            # delta_theta += math.pi
         elif abs(delta_theta) > math.pi / 6:
             # 角度相差较大 原地转向
             print("forward", idx_robot, 0)
