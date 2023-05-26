@@ -164,98 +164,6 @@ class Controller:
         robot.is_deadlock = False
         robot.is_stuck = False
 
-    def radar(self, idx_robot, d_theta):
-        # 当前位置与朝向
-        point = self.robots[idx_robot].loc
-        theta = self.robots[idx_robot].toward + d_theta
-        theta = (theta + math.pi) % (2 * math.pi) - math.pi
-        # 当前位置所处的格子
-        # raw, col = int(round(point[1] * 2 - 0.5)), int(round(point[0] * 2 - 0.5))
-        raw, col = int(point[1] // 0.5), int(point[0] // 0.5)
-
-        # 取出所有边界点
-        if theta == 0:
-            # 正右
-            x_set_all = np.arange(col + 1, min(col + 4, 99), 1) * 0.5
-            y_set_all = np.ones_like(x_set_all) * point[1]
-        elif theta == math.pi / 2:
-            # 正上
-            y_set_all = np.arange(raw + 1, min(raw + 4, 99), 1) * 0.5
-            x_set_all = np.ones_like(y_set_all) * point[0]
-        elif theta == math.pi:
-            # 正左
-            x_set_all = np.arange(col, max(col - 3, 0), -1) * 0.5
-            y_set_all = np.ones_like(x_set_all) * point[1]
-        elif theta == -math.pi / 2:
-            # 正下
-            y_set_all = np.arange(raw, max(raw - 3, 0), -1) * 0.5
-            x_set_all = np.ones_like(y_set_all) * point[0]
-        else:
-            # 其他方向
-
-            # x方向栅格点集
-            if -math.pi / 2 < theta < math.pi / 2:
-                # 1 4 象限
-                x_set_xgrid = np.arange(col + 1, min(col + 4, 99), 1) * 0.5
-            else:
-                # 2 3 象限
-                x_set_xgrid = np.arange(col, max(col - 3, 0), -1) * 0.5
-            y_set_xgrid = np.tan(theta) * (x_set_xgrid - point[0]) + point[1]
-
-            # y方向栅格点集
-            if 0 < theta < math.pi:
-                # 1 2 象限
-                y_set_ygrid = np.arange(raw + 1, min(raw + 4, 99), 1) * 0.5
-
-            else:
-                # 3 4 象限
-                y_set_ygrid = np.arange(raw, max(raw - 3, 0), -1) * 0.5
-            x_set_ygrid = 1 / np.tan(theta) * \
-                          (y_set_ygrid - point[1]) + point[0]
-            x_set_all = np.concatenate((x_set_xgrid, x_set_ygrid))
-            y_set_all = np.concatenate((y_set_xgrid, y_set_ygrid))
-
-            # 得到排序后的索引
-            idx = np.argsort(y_set_all)
-            # 将坐标按照排序后的索引进行排序
-            if theta < 0:
-                x_set_all = x_set_all[idx]
-                y_set_all = y_set_all[idx]
-            else:
-                x_set_all = x_set_all[idx[::-1]]
-                y_set_all = y_set_all[idx[::-1]]
-
-        # 取出所有边界点↑
-        x_set_near = x_set_all[:-1]
-        x_set_far = x_set_all[1:]
-
-        y_set_near = y_set_all[:-1]
-        y_set_far = y_set_all[1:]
-
-        x_set_mid = (x_set_near + x_set_far) / 2
-        y_set_mid = (y_set_near + y_set_far) / 2
-
-        mask = np.zeros_like(x_set_mid, dtype=bool)
-        mask[(x_set_mid >= 0) & (x_set_mid <= 50) & (
-                y_set_mid >= 0) & (y_set_mid <= 50)] = True
-        x_set_mid = x_set_mid[mask]
-        y_set_mid = y_set_mid[mask]
-        idx_ob = -1
-        for i_point in range(len(x_set_mid)):
-            x = x_set_mid[i_point]
-            y = y_set_mid[i_point]
-            raw, col = tools.cor2rc(x, y)
-
-            if self.m_map_arr[raw, col] == 0:
-                idx_ob = i_point
-                break
-
-        if idx_ob == -1:
-            return 100
-        else:
-            # 障碍物距离
-            return np.sqrt((x_set_near[idx_ob] - point[0]) ** 2 + (y_set_near[idx_ob] - point[1]) ** 2)
-
     def could_run(self, loc0, loc1, carry_flag):
         # 位置0到位置1区间是否有符合要求
 
@@ -553,51 +461,7 @@ class Controller:
         # 判断是否同时到终点僵持
         return d
 
-    def direct_colli(self, idx_robot, idx_other, thr_dis=4, thr_theta=math.pi / 5):
-        robot_this = self.robots[idx_robot]
-        robot_other = self.robots[idx_other]
-
-        raw, col = self.m_map.loc_float2int(*robot_this.loc)
-
-        # 要在大空地 且 离目标工作台足够远
-        if self.m_map_arr[raw, col] == Workmap.SUPER_BROAD_ROAD and self.dis2target(idx_robot) > 5:
-
-            loc_this = np.array(robot_this.loc)
-            loc_other = np.array(robot_other.loc)
-            vec_this2other = loc_other - loc_this
-            vec_other2this = loc_this - loc_other
-
-            dis = np.sqrt(np.dot(vec_this2other, vec_this2other))
-
-            # 距离要足够近
-            if dis < thr_dis:
-                #############################
-                # 本机器人头朝向
-                theta_toward_this = robot_this.toward
-
-                # 本机器人速度朝向
-                speed_vec_this = np.array(robot_this.speed)
-                theta_speed_this = np.arctan2(speed_vec_this[1], speed_vec_this[0])
-
-                # 本机器人 对方相对于自身朝向
-                theta_robot_this = np.arctan2(vec_this2other[1], vec_this2other[0])
-
-                #############################
-                # 其他机器人头朝向
-                theta_toward_other = robot_other.toward
-
-                # 其他机器人速度朝向
-                speed_vec_other = np.array(robot_other.speed)
-                theta_speed_other = np.arctan2(speed_vec_other[1], speed_vec_other[0])
-
-                # 其他机器人 自身相对于对方朝向
-                theta_robot_other = np.arctan2(vec_other2this[1], vec_other2this[0])
-
-                # 撞向对方的可能
-                if max(abs(theta_toward_this - theta_robot_this), abs(theta_speed_this - theta_robot_this), abs(theta_toward_other - theta_robot_other), abs(theta_speed_other - theta_robot_other)) < thr_theta:
-                    return True
-            return False
-
+ 
     def AF(self, loc_robot):
         row, col = self.m_map.loc_float2int(loc_robot[0], loc_robot[1])
         row_start = max(row - 2, 0)
@@ -628,17 +492,6 @@ class Controller:
                 new_col] == Workmap.BLOCK:
                 return False
         return True
-
-    def obt_near_count(self, robot):
-        row, col = self.m_map.loc_float2int(*robot.loc)
-        count = 0
-        for row_offset, col_offset in Workmap.TURNS:
-            new_row = row + row_offset
-            new_col = col + col_offset
-            if new_col < 0 or new_col > 99 or new_row < 0 or new_col > 99 or self.m_map.map_gray[new_row][
-                new_col] == Workmap.BLOCK:
-                count += 1
-        return count
 
     def move(self, idx_robot):
         robot = self.robots[idx_robot]
@@ -779,13 +632,6 @@ class Controller:
 
         robot_theta = self.robots[idx_robot].toward
         delta_theta = target_theta - robot_theta
-
-        # 不确定用处大不大，暂时保留
-        # for idx_other in range(4):
-        #     if not idx_other == idx_robot:
-        #         if self.direct_colli(idx_robot, idx_other, thr_dis=6):
-        #             delta_theta -= math.pi / 5
-        #             break
 
         delta_theta = (delta_theta +
                        math.pi) % (2 * math.pi) - math.pi

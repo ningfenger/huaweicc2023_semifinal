@@ -32,11 +32,10 @@ class Workmap:
     TURNS.remove((0, 0))
 
     def __init__(self, debug=False) -> None:
-        self.roads: List[set] = []  # 狭路集合
         self.map_data: List[str] = []  # 原始地图信息
-        # 二值地图 0为空地 100为墙 50 为路径
         self.robots_loc: dict = {}  # k 机器人坐标点 v 机器人ID
         self.workbenchs_loc: dict = {}  # k 工作台坐标点 v 工作台ID
+        # 灰度地图，对不同路进行了区分
         self.map_gray = [[self.GROUND] * 100 for _ in range(100)]
         if debug:
             import matplotlib.pyplot as plt
@@ -48,17 +47,24 @@ class Workmap:
         self.unreanchble_warkbench = set()  # 记录不能正常使用的工作台
         self.broad_shifting = {}  # 有些特殊宽路的偏移量
 
-    @lru_cache(None)
-    def loc_int2float(self, i: int, j: int, rode=False):
+    def loc_int2float_normal(self, i: int, j: int):
         '''
-        地图离散坐标转实际连续坐标
-        rode: 标识是否是窄路，窄路按原先右上角
+        地图离散坐标转实际连续坐标, 不作额外操作
         '''
         x = 0.5 * j + 0.25
         y = (100 - i) * 0.5 - 0.25
+        return x, y
+
+    @lru_cache(None)
+    def loc_int2float(self, i: int, j: int, rode=False):
+        '''
+        地图离散坐标转实际连续坐标, 导航时使用，某些路会附加偏移
+        rode: 标识是否是窄路，窄路按原先右上角
+        '''
+        x, y = self.loc_int2float_normal(i, j)
         if rode:
-            x += 0.25
-            y -= 0.25
+            x += 0.249
+            y -= 0.249
         elif (i, j) in self.broad_shifting:
             # 特殊宽路
             shifting = self.broad_shifting[(i, j)]
@@ -132,20 +138,25 @@ class Workmap:
                     x, y = tmp_blocks[0]
                     if x == 0 or y == 0:  # 必须是四个角上
                         continue
-                    flag1 = 0 <= j - 2 * x <= 99 and 0 <= i + y <= 99 and self.map_gray[j - 2 * x][i] != self.BLOCK and \
+                    # flag1 = 0 <= j - 2 * y <= 99 and self.map_gray[i][j - 2 * y] != self.BLOCK and \
+                    #     self.map_gray[i + x][j - 2 * y] != self.BLOCK
+                    # flag2 = 0 <= i + 2 * x <= 99 and self.map_gray[i + 2 * x][j] != self.BLOCK and \
+                    #     self.map_gray[i + 2*x][j + y] != self.BLOCK
+                    flag1 = 0 <= j - 2 * x <= 99 and self.map_gray[j - 2 * x][i] != self.BLOCK and \
                         self.map_gray[j - 2 * x][i + y] != self.BLOCK
-                    flag2 = 0 <= i - 2 * x <= 99 and 0 <= j + y <= 99 and self.map_gray[i - 2 * x][j] != self.BLOCK and \
+                    flag2 = 0 <= i - 2 * x <= 99 and self.map_gray[i - 2 * x][j] != self.BLOCK and \
                         self.map_gray[i - 2 * x][j + y] != self.BLOCK
                     if flag1 and flag2:
                         self.map_gray[i][j] = self.BROAD_ROAD
                         # 要根据具体情况加偏移量
                         if self.map_gray[i - 2 * x][j - y] == self.BLOCK:
-                            self.broad_shifting[(i, j)] = (0, x * 0.25)
+                            self.broad_shifting[(i, j)] = (0, x * 0.249)
                         elif self.map_gray[j - 2 * x][i - y] == self.BLOCK:
-                            self.broad_shifting[(i, j)] = (-y * 0.25, 0)
+                            self.broad_shifting[(i, j)] = (-y * 0.249, 0)
                         else:
                             # 往远离的方向推
-                            self.broad_shifting[(i, j)] = (-y * 0.25, x * 0.25)
+                            self.broad_shifting[(
+                                i, j)] = (-y * 0.249, x * 0.249)
 
         # 再算窄路
         for i in range(100):
@@ -153,9 +164,7 @@ class Workmap:
                 if self.map_gray[i][j] == self.BROAD_ROAD:
                     continue
                 for x, y in itertools.product([0, 1], repeat=2):
-                    if i + x > 99 or j + y > 99:
-                        continue
-                    if self.map_gray[i + x][j + y] == self.BLOCK:
+                    if i + x > 99 or j + y > 99 or self.map_gray[i + x][j + y] == self.BLOCK:
                         break
                 else:
                     self.map_gray[i][j] = self.ROAD
@@ -163,6 +172,20 @@ class Workmap:
                     if (i == 0 or j == 99 or self.map_gray[i - 1][j + 1] == self.BLOCK) and (
                             i == 99 or j == 0 or self.map_gray[i + 1][j - 1] == self.BLOCK):
                         self.map_gray[i][j] = self.GROUND
+                    # continue
+                '''
+                  .
+
+                .  
+                '''
+                if (i == 0 or j == 0 or self.map_gray[i - 1][j - 1] == self.BLOCK) and (
+                        i == 99 or j == 99 or self.map_gray[i + 1][j + 1] == self.BLOCK):
+                    if i > 0:
+                        self.map_gray[i -
+                                      1][j] = min(self.GROUND, self.map_gray[i-1][j])
+                    if j > 0:
+                        self.map_gray[i][j -
+                                         1] = min(self.GROUND, self.map_gray[i][j-1])
         for i, j in self.workbenchs_loc:  # 集中处理工作台
             if self.map_gray[i][j] == self.BROAD_ROAD:
                 continue
@@ -197,11 +220,12 @@ class Workmap:
                 if self.map_gray[i][j] < self.BROAD_ROAD or (i, j) in self.broad_shifting:
                     continue
                 # 十字区域都是宽路即可
-                for x, y in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
-                    if self.map_gray[i][j] < self.BROAD_ROAD or (i, j) in self.broad_shifting:
-                        break
-                else:
-                    self.map_gray[i][j] = self.SUPER_BROAD_ROAD
+                # for x, y in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                #     if self.map_gray[i+x][j+y] < self.BROAD_ROAD or (i+x, j+y) in self.broad_shifting:
+                #         break
+                # else:
+                #     self.map_gray[i][j] = self.SUPER_BROAD_ROAD
+                self.map_gray[i][j] = self.SUPER_BROAD_ROAD
 
     def robot2workbench(self):
         '''
@@ -252,6 +276,7 @@ class Workmap:
             dq = [workbench_loc]
             while dq:
                 i, j = dq.pop()
+                flag1 = (i,j) in self.broad_shifting
                 for x, y in self.TURNS:
                     n_x, n_y = i + x, j + y
                     # 因为是卖的过程，必须是宽路
@@ -261,6 +286,12 @@ class Workmap:
                         visited_workbench.append(
                             (self.workbenchs_loc[(n_x, n_y)], int(self.map_data[n_x][n_y])))  # 将这个工作台添加到列表
                     visited_loc[n_x][n_y] = True
+                    if flag1 and x!=0 and y!=0 and (n_x,n_y) in self.broad_shifting:
+                        if self.map_gray[i-x][j+y]==self.BLOCK and (i+2*x<0 or i+2*x>99 or  self.map_gray[i+2*x][j]==self.BLOCK):
+                            continue
+                        if self.map_gray[i+x][j-y]==self.BLOCK and (j+2*y<0 or j+2*y>99 or  self.map_gray[i][j+2*y]==self.BLOCK):
+                            continue
+
                     if self.map_gray[n_x][n_y] >= self.BROAD_ROAD:
                         dq.append((n_x, n_y))
             for wb_ID, wb_type in visited_workbench:
@@ -299,12 +330,20 @@ class Workmap:
         while reach:
             tmp_reach = {}  # 暂存新一轮可到达点, k可到达点坐标, v 角度差
             for node_x, node_y in reach:
+                flag1 = (node_x, node_y) in self.broad_shifting
                 last_x, last_y = target_map[node_x][node_y]
                 for i, j in self.TURNS:
                     next_x, next_y = node_x + i, node_y + j
                     if next_x < 0 or next_y < 0 or next_x >= 100 or next_y >= 100 or self.map_gray[next_x][
                             next_y] < low_value:
                         continue
+
+                    # 防止在特殊宽路处卡死
+                    if broad_road and flag1 and i != 0 and j != 0 and (next_x, next_y) in self.broad_shifting:
+                        if self.map_gray[node_x-i][node_y+j] == self.BLOCK and (node_x+2*i < 0 or node_x+2*i > 99 or self.map_gray[node_x+2*i][node_y] == self.BLOCK):
+                            continue
+                        if self.map_gray[node_x+i][node_y-j] == self.BLOCK and (node_y+2*j < 0 or node_y+2*j > 99 or self.map_gray[node_x][node_y+2*j] == self.BLOCK):
+                            continue
                     if (next_x, next_y) not in tmp_reach:
                         if target_map[next_x][next_y]:  # 已被访问过说明是已经添加到树中的节点
                             continue
@@ -354,6 +393,8 @@ class Workmap:
         broad_road: 是否只能走宽路, 根据机器人手中是否 持有物品确定
         return: 返回路径, 为空说明无法避让
         '''
+        if len(work_path) == 0:
+            return []
         if not safe_dis:
             if broad_road:
                 safe_dis = 1.06
@@ -367,10 +408,12 @@ class Workmap:
         tmp_blocks = {}  # 将其他机器人及其一圈看做临时障碍物
         path_map = {(node_x, node_y): (node_x, node_y)}  # 记录路径
         for robot_loc in robots_loc:
-            robot_x, robot_y = self.loc_float2int(*robot_loc)
-            block_turns = self.TURNS + [(0,0)] #+ [(0, 2), (0, -2), (-2, 0), (2, 0)]
+            # 更新了机器人涂黑方式, 先算机器人一圈的浮点值再转为int涂黑
+            # + [(0, 2), (0, -2), (-2, 0), (2, 0)]
+            block_turns = self.TURNS + [(0, 0)]
             for x, y in block_turns:
-                block_x, block_y = robot_x + x, robot_y + y
+                block_x, block_y = self.loc_float2int(
+                    robot_loc[0]+x*0.5, robot_loc[1]+y*0.5)
                 if block_x < 0 or block_x > 99 or block_y < 0 or block_y > 99:
                     continue
                 # 暂存原来的值，方便改回去
@@ -450,7 +493,7 @@ class Workmap:
             x, y = path[i]
             path[i] = self.loc_int2float(
                 x, y, self.map_gray[x][y] == self.ROAD)
-        path[-1] = self.loc_int2float(*path[-1])
+        path[-1] = self.loc_int2float_normal(*path[-1])
         return path
 
     def get_better_path(self, float_loc, workbench_ID, threshold=15):
@@ -499,14 +542,6 @@ class Workmap:
             x, y = target_map[x][y]
         return path
 
-    def get_roadID(self, loc: Tuple[int]) -> int:
-        '''
-        判断某坐标是否属于狭路，如果是返回狭路坐标否则返回-1
-        '''
-        for roadID, road in enumerate(self.roads):
-            if loc in road:
-                return roadID
-        return -1
 
     def draw_map(self):
         pass
@@ -530,12 +565,3 @@ class Workmap:
             path_map[x][y] = self.PATH
         self.plt.imshow(path_map)
         self.plt.show()
-
-    def read_map_directly(self, map_path):
-        with open(map_path) as map:
-            lines = map.readlines()
-            for i, line in enumerate(lines):
-                self.map_data.append(line)
-                for j in range(100):
-                    if line[j] == '#':  # 障碍
-                        self.map_gray[i][j] = self.BLOCK

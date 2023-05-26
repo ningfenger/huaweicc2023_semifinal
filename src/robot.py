@@ -45,17 +45,14 @@ class Robot:
         self.deadlock_with = -1
         # 避让等待
         self.frame_wait = 0
-        self.frame_backword = 0 # 后退帧数
+        self.backword_speed = 0  # 避让速度
+        self.frame_backword = 0  # 后退帧数
         # 预估剩余时间
         self.frame_reman_buy = 0  # 预计多久能买任务
         self.frame_reman_sell = 0  # 预计多久能卖任务
         # 路径追踪的临时点
         self.temp_target = None
-        self.last_target = -1 # 记录上一个目标，解除死锁用
         self.anoter_robot = -1 # 记录和它冲突的机器人
-        self.temp_idx = None
-        self.buy_use = False
-        self.sell_use = False
     def get_frame_reman(self):
         '''
         预计还需要多久可以完成当前任务, 与状态有关
@@ -69,13 +66,20 @@ class Robot:
 
     def update_frame_reman(self):
         '''
-        更新预估值, 与状态有关
+        更新预估值, 与状态有关, 等待时不计时
         '''
-        if self.status in [self.MOVE_TO_BUY_STATUS, self.WAIT_TO_BUY_STATUS]:
-            self.frame_reman_buy -= 1
-        elif self.status in [self.MOVE_TO_SELL_STATUS, self.WAIT_TO_SELL_STATUS]:
-            self.frame_reman_sell -= 1
-
+        if self.frame_wait > 0:
+            self.frame_wait -= 1
+            if self.backword_speed != 0:
+                self.forward(self.backword_speed)
+            else:
+                self.backword_speed = 0
+        else:
+            if self.status in [self.MOVE_TO_BUY_STATUS, self.WAIT_TO_BUY_STATUS]:
+                self.frame_reman_buy -= 1
+            elif self.status in [self.MOVE_TO_SELL_STATUS, self.WAIT_TO_SELL_STATUS]:
+                self.frame_reman_sell -= 1
+        
     def trans_toward(self, toward):
         if toward < 0:
             return 2 * np.pi + toward

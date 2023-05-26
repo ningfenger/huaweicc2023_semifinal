@@ -22,6 +22,7 @@ def finish():
 
 
 if __name__ == '__main__':
+    # workmap = Workmap(True)
     workmap = Workmap()
     robots: List[Robot] = []  # 机器人列表
     workbenchs: List[Workbench] = []  # 工作台列表
@@ -38,6 +39,7 @@ if __name__ == '__main__':
         workbenchs[idx].target_workbench_list = w2w
     # 计算一下路径
     workmap.gen_paths()
+    # workmap.draw_path(workmap.get_path(robots[0].loc, robots[0].target_workbench_list[2]))
     controller = Controller(robots, workbenchs, workmap)
     # 针对性调参
     if workmap.map_data[3][13] == '7' and workmap.map_data[13][3] == '3' and workmap.map_data[23][3] == '7':
